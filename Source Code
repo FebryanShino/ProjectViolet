@@ -1,0 +1,304 @@
+import discord
+from discord.ext import commands
+import os
+import openai
+from keep_alive import keep_alive
+from ratelimiter import RateLimiter
+from sympy import *
+import math
+import random
+import requests
+import asyncio
+import xml.etree.ElementTree as ET
+from disappointment import disappointment_sentence_list
+from MY_LOVE import MY_LOVE
+from praise import praise_high,praise_mid,praise_low
+from Status import status_l, status_p
+from lyrics import lyrics
+
+
+
+
+owner = int(os.getenv('MY_ID'))
+
+intents = discord.Intents.all()
+
+violet = commands.Bot(command_prefix='!', intents=intents,owner_ID = owner)
+
+openai.api_key = os.getenv('API')
+
+command_limiter = RateLimiter(max_calls=1, period=1)
+
+bot_name = 'ヴァイオレット'
+channel_id = os.getenv('CHANNEL_ID')
+
+
+
+async def change_status():
+  while True:
+    status_listening = random.choice(status_l)
+    status_playing = random.choice(status_p)
+    try:
+      await violet.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=status_listening))
+      await asyncio.sleep(60)
+      await violet.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=status_playing))
+      await asyncio.sleep(60)
+    except discord.DiscordException as e:
+      if e.status == 429:
+        reset_time = e.response['Retry-After']
+        await asyncio.sleep(reset_time)
+      else:
+        raise e
+
+
+
+@violet.event
+async def on_ready():
+  try:
+    user = violet.get_user(owner)
+    message = await user.send("フェブリアンさん、こんにちは!")
+    await asyncio.sleep(30)
+    await message.delete()
+    print(f'{bot_name} has connected to Discord!')
+  except Exception as e:
+        print("An error ocurred: ", e)
+        pass
+  await violet.loop.create_task(change_status())
+
+
+
+
+
+@violet.command(name='setstatus')
+@commands.is_owner()
+async def setstatus(ctx, *, status):
+  await violet.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=status))
+  await ctx.send(f'Status set to: Listening to {status}')
+
+
+
+@violet.command(name='call')
+async def call(ctx,user: discord.Member = None):
+  if user is not None:
+    await ctx.send(f"{user.mention}\n\nHey you!\nYou're finally awake")
+  else:
+    await ctx.send(f"{ctx.author.mention}\n\nHey you!\nYou're finally awake")
+
+
+
+@violet.command(name='whoareyou')
+async def whoareyou(ctx):
+    await ctx.send("I'm you but better 😎")
+
+
+
+@violet.command(name='nournot')
+async def nournot(ctx):
+    await ctx.send("YES I AM!")
+
+
+
+@violet.command(name='ping')
+async def ping(ctx, user: discord.Member = None):
+  if user is not None:
+    await ctx.send(f'{user.mention}\n\npong!')
+    await user.send(f"{user.mention}\nYou've got ponged\nDon't blame me\nBlame {ctx.author.mention}")
+  else:
+    await ctx.send(f'{ctx.author.mention}\n\npong!')
+
+
+
+@violet.command(name='say')
+async def say(ctx, *, message: str):
+  await ctx.send(message, tts=True)
+
+
+
+@violet.command(name='pow')
+async def pow(ctx, a: float, b: float):
+    await ctx.send(a**b)
+
+
+
+@violet.command(name='ai')
+async def ai(ctx, *, prompt):
+    try:
+        response = openai.Completion.create(
+            engine="text-davinci-002",
+            prompt=prompt,
+            max_tokens=3000,
+            temperature=0.7,
+        )
+        await ctx.send(response["choices"][0]["text"])
+    except openai.exceptions.OpenAiError as e:
+        await ctx.send(f"Error: {e}")
+
+
+
+@violet.command(name='calc')
+async def calc(ctx, expression: str):
+    x = Symbol('x')
+    expr = parse_expr(expression)
+    result = float(expr.evalf())
+    await ctx.send(result)
+
+
+
+@violet.command(name='area')
+async def area(ctx, formula: str, a: float, b: float = None, c: float = None):
+  if formula == 'square':
+    await ctx.send(a**2)
+  elif formula == 'retangle' and b is not None:
+    await ctx.send(a*b)
+  elif formula == 'triangle' and b is not None:
+    await ctx.send(a*b/2)
+  elif formula == 'trapezium' and b is not None and c is not None:
+    await ctx.send((a+b)*c/2)
+  elif formula == 'kite' and b is not None:
+    await ctx.send(a*b/2)
+  elif formula == 'circle':
+    await ctx.send(math.pi*(a**2))
+
+
+
+@violet.command(name='rate')
+async def rate(ctx, waifu: str, l_name: str = None):
+  waifu = waifu.lower()
+  gacha_rate = int(random.randint(0,100))
+  praise_h = random.choice(praise_high)
+  praise_m = random.choice(praise_mid)
+  praise_l = random.choice(praise_low)
+  disappointment = random.choice(disappointment_sentence_list)
+  l_name = "" if l_name is None else l_name
+  
+  if waifu in MY_LOVE:
+    await ctx.send(f"She's 1000/100, no doubt about that.\n- {bot_name}")
+
+
+  elif waifu.isalpha():
+    if gacha_rate>=75:
+      await ctx.send(f"{waifu.capitalize()} {l_name.capitalize()}'s beauty rate is {gacha_rate}/100.\n{praise_h}\n- {bot_name}")
+    elif gacha_rate>=50:
+      await ctx.send(f"{waifu.capitalize()} {l_name.capitalize()}'s beauty rate is {gacha_rate}/100.\n{praise_m}\n- {bot_name}")
+    else:
+      await ctx.send(f"{waifu.capitalize()} {l_name.capitalize()}'s beauty rate is {gacha_rate}/100.\n{praise_l}\n- {bot_name}")
+
+  else:
+    await ctx.send(f'{disappointment}\n- {bot_name}')
+
+
+
+@violet.command(name='moles')
+async def moles(ctx, find: str, a: float):
+  AV_N = 6.02214076e23
+  if find == 'mol':
+    await ctx.send(f'The moles amount of {a} particles is {a/AV_N} moles')
+
+  if find == 'partikel':
+    await ctx.send(f'The particle amound of {a} moles is {format(a*AV_N)}')
+
+
+
+@violet.command(name='urban')
+async def urban(ctx, *, word: str):
+    url = f"https://api.urbandictionary.com/v0/define?term={word}"
+    response = requests.get(url)
+    data = response.json()
+    if data['list']:
+        definition = data['list'][0]['definition']
+        await ctx.send(definition)
+    else:
+        await ctx.send(f"No results found for {word}")
+
+
+
+@violet.command(name='lyric')
+async def lyric(ctx, *, word: str):
+  word = word.lower()
+
+  if word == 'saltatio favillae':
+    await ctx.send(lyrics[0])
+  elif word == 'true':
+    await ctx.send(lyrics[1])
+  elif word == 'moon halo':
+    await ctx.send(lyrics[2])
+  else:
+    await ctx.send("Can't find the lyrics")
+
+
+
+@violet.command(name='convert')
+async def convert(ctx, base: str, number: str):
+  base = base.lower()
+  try:
+    number = int(number)
+  except ValueError:
+    await ctx.send(f"**{number}** is not an **integer**.")
+    return
+  if base == 'bin':
+    await ctx.send(f"**{number}** converted to binary is **{bin(number)[2:]}**")
+  elif base == 'hex':
+    await ctx.send(f"**{number}** converted to hexadecimal is **{str(hex(number)[2:]).upper()}**")
+  elif base == 'oct':
+    await ctx.send(f"**{number}** converted to octal is **{oct(number)[2:]}**")
+  else:
+    await ctx.send(f"**{base.capitalize()}** is not a valid base.")
+
+
+
+@violet.command(name='loop')
+async def loop(ctx, word: str, amount: str, in_between: str = None):
+  try:
+    amount = int(amount)
+  except ValueError:
+    await ctx.send(f"You can't loop {amount} times\nPlease use **integer** only")
+    return
+    
+  if amount <= 100 and in_between is not None and in_between == '#space':
+    in_between = " "
+    result = [word for i in range(amount)]
+    await ctx.send(in_between.join(result))
+  
+  elif amount <= 100 and in_between is not None and in_between != '#space':
+    result = [word for i in range(amount)]
+    await ctx.send(in_between.join(result))
+    
+  elif amount <= 100:
+    in_between = ""
+    result = [word for i in range(amount)]
+    await ctx.send(in_between.join(result))
+
+  else:
+    await ctx.send("You're too greedy")
+
+
+#work in progress
+#@violet.command()
+async def danbooru(ctx, *tags: str):
+    danbooru_user = os.getenv('DB_USERNAME')
+    danbooru_api = os.getenv('Chicken')
+
+    params = {'tags': ' '.join(tags), 'login': danbooru_user, 'api_key': danbooru_api}
+    try:
+        response = requests.get('https://danbooru.donmai.us/posts.xml', params=params)
+        response.raise_for_status()
+        root = ET.fromstring(response.content)
+        if len(root) > 0:
+          post = random.choice(root)
+          image_url = post.find('file-url').text
+          image_source = post.find('source').text
+          image_artist = post.find('tag-string-artist').text
+          
+          await ctx.send(f"Artist: {image_artist}\nSource: {image_source}\nImage URL: {image_url}")
+        else:
+          await ctx.send("No image found with the given tags")
+    except requests.exceptions.RequestException as err:
+      await ctx.send(f"An error occurred {str(err)}")
+    
+    except IndexError:
+      await ctx.send(f"No images is found with {tags} tags")
+
+
+
+keep_alive()
+violet.run(os.getenv('YEET'))
