@@ -9,13 +9,16 @@ import math
 import random
 import requests
 import asyncio
+import qrcode
+from PIL import Image
+from replit import db
 import xml.etree.ElementTree as ET
 from disappointment import disappointment_sentence_list
 from MY_LOVE import MY_LOVE
 from praise import praise_high,praise_mid,praise_low
 from Status import status_l, status_p
 from lyrics import lyrics
-
+from help_command import help_name, help_value
 
 
 
@@ -67,7 +70,17 @@ async def on_ready():
 
 
 
+@violet.command()
+async def helpme(ctx):
+  embed = discord.Embed(title="Welcome to Violet Bot Command Center\nHere are the available commands:", color = discord.Color.blue())
+  
+  for i in range(0,18):
+    embed.add_field(name = help_name[i], value = help_value[i], inline=False)
+  await ctx.send(embed=embed)
 
+
+
+  
 
 @violet.command(name='setstatus')
 @commands.is_owner()
@@ -102,7 +115,10 @@ async def nournot(ctx):
 async def ping(ctx, user: discord.Member = None):
   if user is not None:
     await ctx.send(f'{user.mention}\n\npong!')
-    await user.send(f"{user.mention}\nYou've got ponged\nDon't blame me\nBlame {ctx.author.mention}")
+    msg = await user.send(f"{user.mention}\nYou've got pinged\nDon't blame me\nBlame {ctx.author.mention}")
+    await asyncio.sleep(60)
+    await msg.delete()
+
   else:
     await ctx.send(f'{ctx.author.mention}\n\npong!')
 
@@ -146,18 +162,19 @@ async def calc(ctx, expression: str):
 
 @violet.command(name='area')
 async def area(ctx, formula: str, a: float, b: float = None, c: float = None):
+  formula = formula.lower()
   if formula == 'square':
-    await ctx.send(a**2)
+    await ctx.send(f"The area of a square with\nSide of **{a}**\nIs **{a**2}**")
   elif formula == 'retangle' and b is not None:
-    await ctx.send(a*b)
+    await ctx.send(f"The area of a triangle with\nLength of **{a}**\nWide of **{b}**\n Is **{a*b}**")
   elif formula == 'triangle' and b is not None:
-    await ctx.send(a*b/2)
-  elif formula == 'trapezium' and b is not None and c is not None:
-    await ctx.send((a+b)*c/2)
+    await ctx.send(f"The area of a triangle with\nBottom of **{a}**\nHeight of **{b}**\nIs **{a*b/2}**")
+  elif formula == ['trapezium', 'trapezoid'] and b is not None and c is not None:
+    await ctx.send(f"The area of {formula}™with\nParallel sides of **{a}** and **{b}**\nHeight of **{c}**\nIs **{(a+b)*c/2}**")
   elif formula == 'kite' and b is not None:
-    await ctx.send(a*b/2)
+    await ctx.send(f"The area of a kite with\nDiagonals of **{a}** and **{b}**\nIs **{a*b/2}**")
   elif formula == 'circle':
-    await ctx.send(math.pi*(a**2))
+    await ctx.send(f"The area of a circle with\nRadius of **{a}**\nIs **{math.pi*(a**2)}**")
 
 
 
@@ -192,10 +209,10 @@ async def rate(ctx, waifu: str, l_name: str = None):
 async def moles(ctx, find: str, a: float):
   AV_N = 6.02214076e23
   if find == 'mol':
-    await ctx.send(f'The moles amount of {a} particles is {a/AV_N} moles')
+    await ctx.send(f'The moles amount of **{a} particles** is **{a/AV_N} moles**')
 
   if find == 'partikel':
-    await ctx.send(f'The particle amound of {a} moles is {format(a*AV_N)}')
+    await ctx.send(f'The particle amound of **{a} moles** is **{format(a*AV_N)}**')
 
 
 
@@ -222,18 +239,22 @@ async def lyric(ctx, *, word: str):
     await ctx.send(lyrics[1])
   elif word == 'moon halo':
     await ctx.send(lyrics[2])
+  elif word in ['花の塔', 'hana no tou', 'はなのとう']:
+    await ctx.send(lyrics[3])
+  elif word in ['きみの名前', 'kimi no namae', 'きみのなまえ']:
+    await ctx.send(lyrics[4])
   else:
     await ctx.send("Can't find the lyrics")
 
 
 
-@violet.command(name='convert')
-async def convert(ctx, base: str, number: str):
+@violet.command()
+async def decimal(ctx, base: str, number: str):
   base = base.lower()
   try:
     number = int(number)
   except ValueError:
-    await ctx.send(f"**{number}** is not an **integer**.")
+    await ctx.send(f"**{number}** is not a valid **integer**.")
     return
   if base == 'bin':
     await ctx.send(f"**{number}** converted to binary is **{bin(number)[2:]}**")
@@ -244,32 +265,83 @@ async def convert(ctx, base: str, number: str):
   else:
     await ctx.send(f"**{base.capitalize()}** is not a valid base.")
 
+@violet.command()
+async def binary(ctx, base: str, number: str):
+    base = base.lower()
+    try:
+        int(number, 2)
+    except ValueError:
+        await ctx.send(f"**{number}** is not a valid binary number.")
+        return
+    if base == 'dec':
+        decimal = int(number, 2)
+        await ctx.send(f"**{number}** converted to decimal is **{decimal}**")
+    elif base == 'hex':
+        await ctx.send(f"**{number}** converted to hexadecimal is **{str(hex(int(number, 2))[2:]).upper()}**")
+    elif base == 'oct':
+        await ctx.send(f"**{number}** converted to octal is **{oct(int(number, 2))[2:]}**")
+    else:
+        await ctx.send(f"**{base.capitalize()}** is not a valid base.")
+
+
+@violet.command()
+async def hexa(ctx, base: str, number: str):
+    base = base.lower()
+    try:
+        int(number, 16)
+    except ValueError:
+        await ctx.send(f"**{number}** is not a valid **hexadecimal** number.")
+        return
+    if base == 'dec':
+        decimal = int(number, 16)
+        await ctx.send(f"**{number}** converted to decimal is **{decimal}**")
+    elif base == 'bin':
+        await ctx.send(f"**{number}** converted to binary is **{(bin(int(number, 16))[2:])}**")
+    elif base == 'oct':
+        await ctx.send(f"**{number}** converted to octal is **{oct(int(number, 16))[2:]}**")
+    else:
+        await ctx.send(f"**{base.capitalize()}** is not a valid base.")
+
+@violet.command()
+async def octal(ctx, base: str, number: str):
+    base = base.lower()
+    try:
+        int(number, 8)
+    except ValueError:
+        await ctx.send(f"**{number}** is not a valid **octal** number.")
+        return
+    if base == 'dec':
+        decimal = int(number, 8)
+        await ctx.send(f"**{number}** converted to decimal is **{decimal}**")
+    elif base == 'bin':
+        await ctx.send(f"**{number}** converted to binary is **{bin(int(number, 8))[2:]}**")
+    elif base == 'hex':
+        await ctx.send(f"**{number}** converted to hexadecimal is **{(str(hex(int(number, 8))[2:])).upper()}**")
+    else:
+        await ctx.send(f"**{base.capitalize()}** is not a valid base.")
 
 
 @violet.command(name='loop')
 async def loop(ctx, word: str, amount: str, in_between: str = None):
-  try:
-    amount = int(amount)
-  except ValueError:
-    await ctx.send(f"You can't loop {amount} times\nPlease use **integer** only")
-    return
-    
-  if amount <= 100 and in_between is not None and in_between == '#space':
-    in_between = " "
-    result = [word for i in range(amount)]
-    await ctx.send(in_between.join(result))
-  
-  elif amount <= 100 and in_between is not None and in_between != '#space':
-    result = [word for i in range(amount)]
-    await ctx.send(in_between.join(result))
-    
-  elif amount <= 100:
-    in_between = ""
-    result = [word for i in range(amount)]
-    await ctx.send(in_between.join(result))
+    try:
+        amount = int(amount)
+    except ValueError:
+        await ctx.send(f"You can't loop {amount} times\nPlease use **integer** only")
+        return
 
-  else:
-    await ctx.send("You're too greedy")
+    if amount > 0:
+        if in_between == '#space':
+            in_between = " "
+        elif in_between is None:
+            in_between = ""
+
+        result = in_between.join([word for i in range(amount)])
+        if len(result) > 2000:
+            await ctx.send("it's too much")
+        else:
+            await ctx.send(result)
+    else:
+        await ctx.send("You're too greedy")
 
 
 #work in progress
@@ -298,7 +370,42 @@ async def danbooru(ctx, *tags: str):
     except IndexError:
       await ctx.send(f"No images is found with {tags} tags")
 
+@violet.command()
+async def qr(ctx, link: str, name: str = None):
+  image = qrcode.make(link)
+  if name is None:
+    image.save("qr_code_dir/qrcode.png", "PNG")
+    with open("qr_code_dir/qrcode.png", "rb") as f:
+      await ctx.send("Here's your QR code", file=discord.File(f))
 
+  else:
+    image.save(f"qr_code_dir/{name}.png", "PNG")
+    with open(f"qr_code_dir/{name}.png", "rb") as f:
+      await ctx.send(f"Here's your QR code named '{name}.png'", file=discord.File(f))
 
+@violet.command()
+async def url(ctx, act = None, key = None, value = None):
+  if act is not None:
+    act = act.lower()
+    if act == 'save' and key is not None and value is not None:
+      db[key] = value
+      await ctx.send(f"'{key}' is saved")
+    elif act == 'get' and value is None:
+      value = db[key]
+      await ctx.send(f"URL for '{key}' is\n{value}")
+    elif act == 'del' and value is None:
+      del db[key]
+      await ctx.send(f"'{key}' is deleted")
+    elif act == 'list' and key is None and value is None:
+      keys = sorted(list(db.keys()))
+      keys_list = "\n".join(["• " + i for i in keys])
+      embed = discord.Embed(title="Key Database", color = discord.Color.red())
+      embed.add_field(name="", value = keys_list)
+      await ctx.send(embed=embed)
+    else:
+      await ctx.send(f"{act} is not a valid input")
+  else:
+    await ctx.send("You need to enter something...")
+      
 keep_alive()
 violet.run(os.getenv('YEET'))
