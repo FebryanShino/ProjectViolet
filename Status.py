@@ -1,0 +1,3 @@
+status_l = ["四条貴音 - 恋花", "Leo/need - 流星のパルス", "霜月はるか - 運命の向こうへ", "日南乃 - nocturne", "ワンダランズ×ショータイム - トンデモワンダーズ", "HOYO-MiX - TruE", "HOYO-MiX - Regression", "HOYO-MiX - Rubia", "HOYO-MiX - Storm Chaser", "ClariS - ALIVE", "Mitsukiyo - Bunny Bunny Carrot Carrot", "さユり - 花の塔", "HOYO-MiX - Caelestinum Finale Termini", "Eutopia - 鐘 嵐珠", "Roselia - FIRE BIRD", "Project LUMINOUS - GR@TITUDE", "HOYO-MiX - Lovers' Oath", "M2U - Marigold (feat. グリリ)", "HOYO-MiX - Moon Halo", "常闇トワ - Palette", "星街すいせい - GHOST", "TRUE - Sincerely", "Evan Call - Violet's Letter", "TRUE - WILL", "茅原実里 - エイミー", "やなぎなぎ - ユキトキ", "鹿乃 - 光の道標"]
+
+status_p = ["Genshin Impact ", "ブルーアーカイブ", "Modern Warships", "Sky: Children of the Light", "プロセカ", "アズールレーン", "Discord"]
