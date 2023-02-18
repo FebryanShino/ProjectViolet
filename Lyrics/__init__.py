@@ -3,6 +3,10 @@ import requests
 from collections import defaultdict
 
 class iTunes:
+  """
+  iTunes class
+  To get information from a track
+  """
   
   def __init__(self, search):
     self.search = requests.get(f'https://itunes.apple.com/search?term={search}&entity=song')
@@ -56,6 +60,10 @@ class iTunes:
 
 
 def formatted(keyword):
+  """
+  A function so you can search a lyric by
+  both its index and name
+  """
   yeet = sorted(os.listdir('Lyrics/Title'))
   length = len(yeet)
   key = [i+1 for i in range(length)]
@@ -73,6 +81,11 @@ def formatted(keyword):
 
 
 def parts(input, count):
+  """
+  To split the lyrics into n/field
+  so discord embed won't bonk me for
+  exceeding the limit
+  """
   collection = 0
   while collection < len(input):
     yield input[collection:collection + count]
@@ -80,6 +93,9 @@ def parts(input, count):
 
 
 def times(second):
+  """
+  Convert seconds to mm:ss format
+  """
   minutes = second /1000 //60
   seconds = second /1000 % 60
   format = "{:}:{:}".format(str(minutes).split(".")[0].zfill(2), str(seconds).split(".")[0].zfill(2))
