@@ -41,7 +41,9 @@ from Website import Heart
 from YouTube import ytAPI
 from Discord import FileNames
 from AnimeSeries import Kyoko,WaifuIm
+from Lyrics import parts, lyrics_list
 from Database import Database
+from DeepLearning import StableDiffusion, Deepbooru
 from OpenAI import OpenAI, OpenAIData, CropSquare
 
 
@@ -141,22 +143,44 @@ Violet Series
 ----------------
 Wanna learn about Violet?
 
-- violets : Violet's ID card
+- violet : Violet's ID card
 - helpme  : Need help, goshuujin-sama?
 """
 
-@violet.command()
-async def violets(ctx):
+@violet.command(name='violet')
+async def botinfo(ctx):
   author_avatar = violet.get_user(owner).avatar
   
-  info = discord.Embed(title = f"{bot_info.bot_name}", url = bot_info.repository, description = f"Created by {bot_info.author_name}", color = discord.Color.from_str('#e5dbca'))
+  info = discord.Embed(
+    title = bot_info.bot_name,
+    description = bot_info.bot_desc(),
+    color = bot_info.color
+  )
 
-  info.add_field(name = f"{bot_info.bot_name} {bot_info.bot_desc}", value = f"[Main Website]({bot_info.bot_site})")
-  info.add_field(name = f"{bot_info.author_name} SNS", value = bot_info.author_desc)
-  info.set_footer(text = f"{bot_info.author_name} 2023", icon_url = author_avatar)
-  info.set_thumbnail(url = bot_info.image_url)
-  info.set_image(url = bot_info.image_url)
+  info.add_field(
+    name = "All About Violet",
+    value = f"[Violet's Website]({bot_info.bot_site})\n[Violet's Repository]({bot_info.repository})"
+  )
+  
+  info.add_field(
+    name = f"{bot_info.author_name} SNS",
+    value = bot_info.author_desc
+  )
+  info.set_footer(
+    text = f"Created by {bot_info.author_name}",
+    icon_url = author_avatar
+  )
+  info.set_author(
+    name = "Violet",
+    icon_url = bot_info.image_url,
+    url = bot_info.invite
+  )
+  
+  info.set_thumbnail(url = violet.user.avatar)
+  info.set_image(url = violet.user.avatar)
   await ctx.send(embed=info)
+
+botinfo.name = "violet"
 
 
 
@@ -183,89 +207,88 @@ Everything that Violet does in her spare time~
 - addstatus : Add status for Violet to do
 - setstatus : Force Violet to do something
               she doesn't want to (EVIL!)  
+
+Slash Command
 """
 
-@violet.command()
-async def status(ctx):
-  progress = await ctx.send("Creating a chart\nPlease wait a moment...")
+status = violet.create_group(name='status')
+
+@status.command(name='statistics')
+async def statistics(ctx):
+  await ctx.respond("Creating a chart\nPlease wait a moment...")
   
   from Violet.StatusData import StatusData
   type = StatusData()
-  data = discord.Embed(title='Status Database', color = discord.Color.from_str('#e5dbca'))
+  data = discord.Embed(title='Status Database', color = 0xe5dbca)
   data.add_field(name='Status Counts',value= f"**Listening**: {type['music']}\n**Playing**: {type['game']}\n**Watching**: {type['movie']}")
   data.set_thumbnail(url=bot_info.image_url)
   
   with open("Violet/Chart.jpg", "rb") as f:
-    await progress.delete()
-    await asyncio.sleep(1)
-    await ctx.send(embed=data,file=discord.File(f))
+    await ctx.respond(embed=data,file=discord.File(f))
   os.remove("Violet/Chart.jpg")
 
 
 
-@violet.command()
+@status.command(name='add')
 @commands.is_owner()
-async def addstatus(ctx, activity = None, *name):
+async def addstatus(
+  ctx,
+  activity: discord.Option(
+    choices=['Listening','Playing','Watching']
+  ),
+  name
+):
   available = ['listening','playing','watching']
-
-  async for command in ctx.history(limit=2):
-    if command.author == ctx.author:
-      await command.delete()
-      break
-  try:
-    activity = activity.lower()
-  except:
-    msg1 = await ctx.send(f"Please enter the activity you want me to do, {ctx.author.mention}-san")
-    await asyncio.sleep(30)
-    await msg1.delete()
-    return
 
   with open("Violet/status.csv","a",newline = '') as status:
     writer = csv.writer(status)
-    if activity in available:
-      if not name:
-        msg2 = await ctx.send(f"What do you want me to {activity[:-3]}, {ctx.author.mention}-san")
-        await asyncio.sleep(30)
-        await msg2.delete()
-        return
-      formatted_name = " ".join(name)
-      writer.writerow([activity, formatted_name])
+    writer.writerow([activity.lower(), name])
       
-      if activity == 'listening':
-        activity = f"{activity.capitalize()} to"
-      else:
-        activity = activity.capitalize()
+  if activity == 'Listening':
+      activity = f"{activity} to"
         
-      msg = await ctx.send(f"「{activity} {formatted_name}」is added into the status list")
-      await asyncio.sleep(5)
-      await msg.delete()
-      
-    else:
-      msg3 = await ctx.send(f"{activity.capitalize()} is not a valid activity, yet")
-      await asyncio.sleep(30)
-      await msg3.delete()
+  await ctx.respond(
+    f"「{activity} {name}」is added into the status list",
+    ephemeral=True
+  )
 
 
 
-@violet.command()
+@status.command(name='sort')
 async def sortstatus(ctx):
-  async for command in ctx.history(limit=2):
-    if command.author == ctx.author:
-      await command.delete()
-      break
   from Violet.algorithm import SortStatus
   SortStatus()
-  msg = await ctx.send("Violet has finished sorting and filtering the Status List.")
-  await asyncio.sleep(30)
-  await msg.delete()
+  await ctx.respond(
+    "Violet has finished sorting and filtering the Status List.",
+  ephemeral=True
+  )
 
 
 
-@violet.command(name='setstatus')
+@status.command(name='set')
 @commands.is_owner()
-async def setstatus(ctx, *, status):
-  await violet.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=status))
-  await ctx.send(f'Status set to: Listening to {status}')
+async def setstatus(
+  ctx,
+  action: discord.Option(
+    choices=['Listening','Playing','Watching']
+  ),
+  status):
+
+  type = discord.ActivityType
+  if action == 'Listening':
+    act = type.listening
+  elif action == 'Watching':
+    act = type.watching
+  elif action == 'Playing':
+    act = type.playing
+  else:
+    await ctx.respond("Baaaka.")
+    return
+
+  if action == 'Listening':
+    action = f"{action} to"
+  await violet.change_presence(activity=discord.Activity(type=act, name=status))
+  await ctx.respond(f'Status set to: {action} {status}', ephemeral=True)
 
 
 """
@@ -312,7 +335,12 @@ async def soul(ctx, path = None, action = None):
   except:
     await ctx.send("Can't find the directory")
     return
-  embed = discord.Embed(title=f"{bot_info.bot_name}の体",url = bot_info.repository, description = "私のすべて", color = discord.Color.from_str('#e5dbca'))
+  embed = discord.Embed(
+    title=f"{bot_info.bot_name}の体",
+    url = bot_info.repository,
+    description = "私のすべて",
+    color = bot_info.color
+  )
 
   if main != []:
     embed.add_field(name="Violet's Heart", value=f'[{"".join(main)}]({os.getenv("source_code")})')
@@ -324,7 +352,12 @@ async def soul(ctx, path = None, action = None):
     embed.add_field(name="Violet's Python Programs", value = "\n".join(python_programs))
 
   if texts != []:
-    embed.add_field(name="Violet's Texts", value = "\n".join(texts))
+    count = 2
+    name = "Violet's Texts"
+    for part in parts(texts, 25):
+      embed.add_field(name=name, value = "\n".join(part))
+      name = f"Violet's Texts Part {count}"
+      count += 1
 
   if csv_files != []:
     embed.add_field(name="Violet's CSV Database", value = "\n".join(csv_files))
@@ -334,7 +367,7 @@ async def soul(ctx, path = None, action = None):
 
   if others != []:
     embed.add_field(name="Violet's Other Stuff", value= "\n".join(others))
-    
+
   embed.set_image(url = bot_info.image_url2)
   await ctx.send(embed=embed)
 
@@ -635,18 +668,17 @@ My Creator really loves music~
 - lycolor : Change the embed color (hex)
 """
 
-@violet.command()
-async def ly(ctx, *name):
+lyrics = violet.create_group(name="lyrics")
+
+@lyrics.command(name='get')
+async def ly(ctx, title):
   from Lyrics import formatted, iTunes, times
-  if not name:
-    await ctx.send("Please enter the song name")
-    return
+
   try:
-    names = "".join(name)
-    names = int(names)
-  except:
-    names = " ".join(name)
-  name_format = formatted(names)
+    title = int(title)
+  except ValueError:
+    pass
+  name_format = formatted(title)
   if name_format == "":
     await ctx.send("Please enter the valid title of the song")
     return
@@ -657,7 +689,7 @@ async def ly(ctx, *name):
       for lines in con:
         content.append(lines)
   except FileNotFoundError:
-    await ctx.send(f"{' '.join(name)} is not found in the Lyrics List")
+    await ctx.respond(f"{title} is not found in the Lyrics List")
     return
 
   try:
@@ -682,8 +714,9 @@ async def ly(ctx, *name):
     artist = "Song by **[{}]({})**".format(artist_name,song['artist'])
 
   try:
-    dominant_color = content[2].split(":")[1].strip()
-    embed_color = discord.Color.from_str(dominant_color)
+    color = content[2].split(":")[1].strip()
+    dominant_color = int(color[1:], 16)
+    embed_color = dominant_color
   except:
     embed_color = discord.Color.blue()
     
@@ -699,34 +732,28 @@ async def ly(ctx, *name):
     lyrics.add_field(name="", value = f"[{title} Preview]({song['preview']})")
   lyrics.set_image(url=song['art'])
   lyrics.set_footer(text=f"{song['album']}\nPrice: {song['price']}")
-  await ctx.send(embed = lyrics)
+  await ctx.respond(embed = lyrics)
 
 
 
-@violet.command()
-async def lysave(ctx, *filename):
-  if not filename:
-    await ctx.send("Please enter the file name")
-    return
-  file = ctx.message.attachments
-  format = FileNames(file).format()
+@lyrics.command(name='save')
+async def lysave(ctx, file: discord.Attachment, title):
+  
+  format = str(file).split(".")[-1]
 
-  name = " ".join(filename).title()
-  file_format = "_".join(filename).lower()
-  if file:
-    if format == "txt":
-      await file[0].save(fp=f"Lyrics/Title/{file_format}.txt")
-      await ctx.send(f"**{name}** is saved")
-    else:
-      await ctx.send("The file you entered is not a text file")
+  name = title.title()
+  file_format = title.lower()
+  if format == "txt":
+    await file.save(fp=f"Lyrics/Title/{file_format}.txt")
+    await ctx.send(f"**{name}** is saved")
   else:
-    await ctx.send("Cannot find the file")
+    await ctx.respond("The file you entered is not a text file", ephemeral=True)
 
 
 
-@violet.command()
+@lyrics.command(name='delete')
 @commands.is_owner()
-async def lydel(ctx, *file):
+async def lydel(ctx, file):
   from Lyrics import formatted
   
   if not file:
@@ -736,29 +763,25 @@ async def lydel(ctx, *file):
     return
 
   try:
-    names = "".join(file)
-    names = int(names)
-  except:
-    names = " ".join(file)
+    file = int(file)
+  except ValueError:
+    pass
     
-  file_format = formatted(names)
-  if file_format == "":
-    await ctx.send("Please enter the valid index/name of the song")
-    return
+  file_format = formatted(file)
     
   filename = file_format.replace("_"," ").title()
   try:
     os.remove(f"Lyrics/Title/{file_format}.txt")
-    await ctx.send(f'{filename} is deleted from the Lyrics List')
+    await ctx.respond(f'{filename} is deleted from the Lyrics List')
 
   except:
-    await ctx.send(f'Cannot find {filename} in the Lyrics List')
+    await ctx.respond(f'Cannot find {filename} in the Lyrics List', ephemeral=True)
 
 
 
-@violet.command()
+@lyrics.command(name='color')
 @commands.is_owner()
-async def lycolor(ctx, color: str = None, *name):
+async def lycolor(ctx, color: str, name):
   from Lyrics import formatted
   
   async for command in ctx.history(limit=2):
@@ -768,14 +791,10 @@ async def lycolor(ctx, color: str = None, *name):
 
   all = []
   try:
-    names = "".join(name)
-    names = int(names)
-  except:
-    names = " ".join(name)
-  name_format = formatted(names)
-  if name_format == "":
-    await ctx.send("Please enter the valid title of the song")
-    return
+    name = int(name)
+  except ValueError:
+    pass
+  name_format = formatted(name)
     
   if color is not None and len(color) == 6:
     try:
@@ -798,38 +817,60 @@ async def lycolor(ctx, color: str = None, *name):
       for new in content:
         updated_data.write(new)
   else:
-    await ctx.send("Please enter a valid color code in the hex format")
+    await ctx.respond("Please enter a valid color code in the hex format")
     return
 
   title = all[0].replace("\n","")
-  await ctx.send(f"{title} color is changed to #{color.upper()}")
+  await ctx.respond(f"{title}'s color is changed to #{color.upper()}")
 
+
+
+@lyrics.command(name='list', description='List of the available lyrics')
+async def lylist(
+  ctx,
+  type: discord.Option(
+    choices=['Original','Romaji']
+  )='Romaji',
+  artist: bool=False,
+  hidden: bool=True
+):
+  
+  lyrics = lyrics_list(type)
+  format_beta = []
+  for i, (lyric,author) in enumerate(lyrics.items()):
+    if artist is True:
+      format_beta.append(
+        f"{i+1} • **{lyric}** - {author}"
+      )
+    elif artist is False:
+      format_beta.append(
+        f"{i+1} • **{lyric}**"
+      )
+  
+  embed = discord.Embed(title='Lyrics List', color = discord.Color.random())
+  for part in parts(format_beta, 25):
+    embed.add_field(name="", value="\n".join(part))
+  await ctx.respond(embed=embed, ephemeral=hidden)
 
 
 @violet.command()
-async def lylist(ctx):
-  from Lyrics import parts
-  
-  file_list = sorted(os.listdir('Lyrics/Title'))
-  name_v1 = "".join(file_list).replace("_"," ")
-  name_v2 = "°".join(name_v1.split(".txt")[:-1]).title()
-  lyrics_list = name_v2.split("°")
-  format_beta = []
-  for i, lyrics in enumerate(lyrics_list):
-    format_beta.append("{} • {}".format(i+1,lyrics))
+async def lyrefresh(ctx):
+  songs = sorted(
+    os.listdir("Lyrics/Title"),
+    key=lambda title: title.lower()
+  )
+  for song in songs:
+    with open(f"Lyrics/Title/{song}", "r") as f:
+      info = f.readlines()
+      titles = info[0].replace("\n","")
+      artists = info[1].split(" by ")[1].replace("\n","")
+    with open("Lyrics/song_titles.csv","a") as save:
+      writer = csv.writer(save)
+      writer.writerow([titles,artists])
 
-  max_num_length = max(len(number.split("•")[0]) for number in format_beta)
-  max_text_length = max(len(text.split("•")[1]) for text in format_beta)
+    
+  await ctx.send("I'm done!!!")
 
-  format = []
-  for i in format_beta:
-    number, text = i.split("•")
-    format.append("{:<{}} {} {:<{}}".format(number.strip(), max_num_length, "•", text.strip(), max_text_length))
-
-  embed = discord.Embed(title='Lyrics List', color = discord.Color.random())
-  for part in parts(format, 25):
-    embed.add_field(name="", value="\n".join(part))
-  await ctx.send(embed=embed)
 
 
 
@@ -845,79 +886,82 @@ It's FebryanS so you should expect that v2
 - octal   : Convert from ocal    (base  8)
 """
 
-@violet.command()
-async def decimal(ctx, base: str, number: str):
+convert = violet.create_group(name="convert")
+
+@convert.command()
+async def decimal(ctx,
+  base: discord.Option(choices=['Binary','Octal','Hexadecimal']), number: str):
   base = base.lower()
   try:
     number = int(number)
   except ValueError:
-    await ctx.send(f"**{number}** is not a valid **integer**.")
+    await ctx.respond(f"**{number}** is not a valid **integer**.")
     return
-  if base == 'bin':
-    await ctx.send(f"**{number}** converted to binary is **{bin(number)[2:]}**")
-  elif base == 'hex':
-    await ctx.send(f"**{number}** converted to hexadecimal is **{str(hex(number)[2:]).upper()}**")
-  elif base == 'oct':
-    await ctx.send(f"**{number}** converted to octal is **{oct(number)[2:]}**")
+  if base == 'binary':
+    await ctx.respond(f"**{number}** converted to binary is **{bin(number)[2:]}**")
+  elif base == 'hexadecimal':
+    await ctx.respond(f"**{number}** converted to hexadecimal is **{str(hex(number)[2:]).upper()}**")
+  elif base == 'octal':
+    await ctx.respond(f"**{number}** converted to octal is **{oct(number)[2:]}**")
   else:
-    await ctx.send(f"**{base.capitalize()}** is not a valid base.")
+    await ctx.respond(f"**{base.capitalize()}** is not a valid base.")
 
 
-@violet.command()
-async def binary(ctx, base: str, number: str):
+@convert.command()
+async def binary(ctx, base: discord.Option(choices=['Octal','Decimal','Hexadecimal']), number: str):
     base = base.lower()
     try:
         int(number, 2)
     except ValueError:
-        await ctx.send(f"**{number}** is not a valid binary number.")
+        await ctx.respond(f"**{number}** is not a valid binary number.")
         return
-    if base == 'dec':
+    if base == 'decimal':
         decimal = int(number, 2)
-        await ctx.send(f"**{number}** converted to decimal is **{decimal}**")
-    elif base == 'hex':
-        await ctx.send(f"**{number}** converted to hexadecimal is **{str(hex(int(number, 2))[2:]).upper()}**")
-    elif base == 'oct':
-        await ctx.send(f"**{number}** converted to octal is **{oct(int(number, 2))[2:]}**")
+        await ctx.respond(f"**{number}** converted to decimal is **{decimal}**")
+    elif base == 'hexadecimal':
+        await ctx.respond(f"**{number}** converted to hexadecimal is **{str(hex(int(number, 2))[2:]).upper()}**")
+    elif base == 'octal':
+        await ctx.respond(f"**{number}** converted to octal is **{oct(int(number, 2))[2:]}**")
     else:
-        await ctx.send(f"**{base.capitalize()}** is not a valid base.")
+        await ctx.respond(f"**{base.capitalize()}** is not a valid base.")
 
 
-@violet.command()
-async def hexa(ctx, base: str, number: str):
+@convert.command()
+async def hexa(ctx, base: discord.Option(choices=['Binary','Octal','Decimal']), number: str):
     base = base.lower()
     try:
         int(number, 16)
     except ValueError:
-        await ctx.send(f"**{number}** is not a valid **hexadecimal** number.")
+        await ctx.respond(f"**{number}** is not a valid **hexadecimal** number.")
         return
-    if base == 'dec':
+    if base == 'decimal':
         decimal = int(number, 16)
-        await ctx.send(f"**{number}** converted to decimal is **{decimal}**")
-    elif base == 'bin':
-        await ctx.send(f"**{number}** converted to binary is **{(bin(int(number, 16))[2:])}**")
-    elif base == 'oct':
-        await ctx.send(f"**{number}** converted to octal is **{oct(int(number, 16))[2:]}**")
+        await ctx.respond(f"**{number}** converted to decimal is **{decimal}**")
+    elif base == 'binary':
+        await ctx.respond(f"**{number}** converted to binary is **{(bin(int(number, 16))[2:])}**")
+    elif base == 'octal':
+        await ctx.respond(f"**{number}** converted to octal is **{oct(int(number, 16))[2:]}**")
     else:
-        await ctx.send(f"**{base.capitalize()}** is not a valid base.")
+        await ctx.respond(f"**{base.capitalize()}** is not a valid base.")
 
 
-@violet.command()
-async def octal(ctx, base: str, number: str):
+@convert.command()
+async def octal(ctx, base: discord.Option(choices=['Binary','Decimal','Hexadecimal']), number: str):
     base = base.lower()
     try:
         int(number, 8)
     except ValueError:
-        await ctx.send(f"**{number}** is not a valid **octal** number.")
+        await ctx.respond(f"**{number}** is not a valid **octal** number.")
         return
-    if base == 'dec':
+    if base == 'decimal':
         decimal = int(number, 8)
-        await ctx.send(f"**{number}** converted to decimal is **{decimal}**")
-    elif base == 'bin':
-        await ctx.send(f"**{number}** converted to binary is **{bin(int(number, 8))[2:]}**")
-    elif base == 'hex':
-        await ctx.send(f"**{number}** converted to hexadecimal is **{(str(hex(int(number, 8))[2:])).upper()}**")
+        await ctx.respond(f"**{number}** converted to decimal is **{decimal}**")
+    elif base == 'binary':
+        await ctx.respond(f"**{number}** converted to binary is **{bin(int(number, 8))[2:]}**")
+    elif base == 'hexadecimal':
+        await ctx.respond(f"**{number}** converted to hexadecimal is **{(str(hex(int(number, 8))[2:])).upper()}**")
     else:
-        await ctx.send(f"**{base.capitalize()}** is not a valid base.")
+        await ctx.respond(f"**{base.capitalize()}** is not a valid base.")
 
 
 
@@ -1560,15 +1604,22 @@ Otaku saves the world they say
 - quote : Get a random quote from anime
 """
 
-@violet.command()
-async def mal(ctx, terms=None, *title):
+anime = violet.create_group(name='anime')
+
+@anime.command(name='myanimelist')
+async def mal(
+  ctx,
+  terms: discord.Option(
+    choices=['Anime','Character','User']),
+    title
+):
   from MyAnimeList import ordinals, MyAnimeList
   if terms is None:
-    await ctx.send("Please enter the valid search category")
+    await ctx.respond("Please enter the valid search category")
     return
 
   if not title:
-    await ctx.send(f"Please enter the title, {ctx.author.mention}-san")
+    await ctx.respond(f"Please enter the title, {ctx.author.mention}-san")
     return
     
 
@@ -1578,7 +1629,7 @@ async def mal(ctx, terms=None, *title):
       anime = MyAnimeList.AnimeSearch(title)
       info = anime.info()
     except IndexError:
-      await ctx.send("Can't find the series")
+      await ctx.respond("Can't find the series")
       return
 
     title_og = anime.titles('og')
@@ -1598,21 +1649,21 @@ async def mal(ctx, terms=None, *title):
     except AttributeError:
       pass
 
-    theme = discord.Embed(title=title_og ,url=url, description=f"**{type}**\n**Season**: {season}\n**Year**: {year}\n**Rank**: {ordinals(rank)}\n**Status**: {status}", color = discord.Color.from_str(color))
+    theme = discord.Embed(title=title_og ,url=url, description=f"**{type}**\n**Season**: {season}\n**Year**: {year}\n**Rank**: {ordinals(rank)}\n**Status**: {status}", color = color)
 
     theme.add_field(name="", value = f"**[{title_og} Trailer]({trailer})**")
     for i in synopsis:
       theme.add_field(name="", value=i)
     theme.set_image(url=image)
     theme.set_footer(text=title_jp)
-    await ctx.send(embed=theme)
+    await ctx.respond(embed=theme)
 
 # UserSearch
   elif terms.lower() == 'user':
     try:
       user = MyAnimeList.UserSearch(title).info()
     except IndexError:
-      await ctx.send("User not found")
+      await ctx.respond("User not found")
       return
 
     username = user['username']
@@ -1622,14 +1673,14 @@ async def mal(ctx, terms=None, *title):
 
     embed = discord.Embed(title=username, url=url, description=f"Last Online: {status}")
     embed.set_image(url=profile)
-    await ctx.send(embed=embed)
+    await ctx.respond(embed=embed)
 
 # CharaSearch
-  elif terms.lower() == 'chara':
+  elif terms.lower() == 'character':
     try:
       chara = MyAnimeList.CharaSearch(title).info()
     except IndexError:
-      await ctx.send("User not found")
+      await ctx.respond("User not found")
       return
 
     chara_name = chara['name']
@@ -1642,38 +1693,45 @@ async def mal(ctx, terms=None, *title):
     embed = discord.Embed(title=chara_name, url=url, description=f"{kanji}\n\n{nick}")
     embed.add_field(name="About", value=bio)
     embed.set_image(url=image)
-    await ctx.send(embed=embed)
+    await ctx.respond(embed=embed)
 
     
   else:
-    await ctx.send(f"Please enter the right category, {ctx.author.mention}-san")
+    await ctx.respond(f"Please enter the right category, {ctx.author.mention}-san")
 
 
 
-@violet.command()
-async def waifu(ctx, *tags):
-  async for command in ctx.history(limit=2):
-    if command.author == ctx.author:
-      await command.delete()
-      break
-  wf = WaifuIm("search").waifu(tags)
+@anime.command(name='waifu')
+async def waifu(ctx, tags, nsfw:bool=False):
+  tags = list(tags.split(" "))
+  wf = WaifuIm("search").waifu(tags,nsfw)
 
+  color = int(wf['color'][1:], 16)
   embed = discord.Embed(
           title = "Your Waifu",
           url = wf['source'],
-color=discord.Color.from_str(wf['color']))
+          color = color)
   embed.set_image(url = wf['url'])
-  await ctx.send(embed=embed)
+  await ctx.respond(embed=embed)
 
 
   
-@violet.command()
-async def quote(ctx, lang='en'):
+@anime.command()
+async def quote(
+  ctx,
+  language: discord.Option(
+    choices=['English', 'Indonesian'])
+):
+  if language == 'English':
+    lang = 'en'
+  elif language == 'Indonesian':
+    lang = 'id'
+
   q = Kyoko('quotes').quotes()
   embed = discord.Embed(title="")
   embed.add_field(name=q[lang],
       value=f"By {q['chara']}\nFrom {q['series']}")
-  await ctx.send(embed = embed)
+  await ctx.respond(embed = embed)
 
 
 
@@ -1766,14 +1824,27 @@ async def chatgpt(ctx, *prompt):
     return
   OpenAIData('ChatGPT').add_data(prompt,response)
   await progress.delete()
-  theme = discord.Embed(title=prompt,
-          description=f"By {user}",
-          color = discord.Color.from_str('#FFFFFF'))
-  theme.add_field(name="Answer", value = response)
-  try:
-    await ctx.send(f"{ctx.author.mention}, Here you go!", embed=theme)
-  except discord.errors.HTTPException:
-    await ctx.send("Discord didn't allow Violet to exceed the 1024 limit")
+  if len(response) > 1024:
+    with open("OpenAI/chatgpt.txt", "w") as f:
+      f.write(f"{prompt}\n\n{response}")
+    with open("OpenAI/chatgpt.txt", "rb") as f:
+      await ctx.send(
+        "Discord didn't allow Violet to sent something more than 1024 characters so, here you go",
+        file=discord.File(f)
+      )
+    os.remove("OpenAI/chatgpt.txt")
+    return
+
+  theme = discord.Embed(
+            title=prompt,
+            description=f"By {user}",
+            color = 0xFFFFFF
+  )
+  theme.add_field(
+    name="Answer",
+    value = response
+  )
+  await ctx.send(f"{ctx.author.mention}, Here you go!", embed=theme)
   
 
 
@@ -1812,7 +1883,7 @@ async def imagine(ctx, *prompt):
 
   try:
     result = OpenAI().DALLE(prompt)
-  except openai.Error:
+  except openai.InvalidRequestError:
     msg1 = await ctx.send("Please don't make My Creator gets banned...")
     await asyncio.sleep(1)
     msg2 =await ctx.send(f"{my_creator.mention},\n{ctx.author.mention} committed a war crime!")
@@ -1823,7 +1894,7 @@ async def imagine(ctx, *prompt):
     return
   OpenAIData('DALL_E').add_data(prompt)
   await progress.delete()
-  theme = discord.Embed(title=prompt.title(), description = "", color = discord.Color.from_str('#FFFFFF'))
+  theme = discord.Embed(title=prompt.title(), description = "", color = 0xFFFFFF)
   theme.set_image(url=result)
   await ctx.send(f"{ctx.author.mention}, here you go!", embed=theme)
 
@@ -1847,7 +1918,7 @@ async def var(ctx):
   CropSquare('OpenAI/Image/raw', 'OpenAI/Image/edited')
   result = OpenAI().Variation()
   await progress.delete()
-  theme = discord.Embed(title="Variation", color= discord.Color.from_str('#FFFFFF'))
+  theme = discord.Embed(title="Variation", color= 0xFFFFFF)
   theme.set_image(url=result)
   await ctx.send(f"{ctx.author.mention}, here you go", embed=theme)
   os.remove("OpenAI/Image/raw.png")
@@ -1895,11 +1966,13 @@ and her creator~
 - forget   : ヒ・ミ・ツ〜
 - recount  : ヒ・ミ・ツ〜
 - cate     : ヒ・ミ・ツ〜
+- category : ヒ・ミ・ツ〜
 """
+memories = violet.create_group(name="memories")
 
-@violet.command()
+@memories.command(name='embrace')
 @commands.is_owner()
-async def embrace(ctx, url=None, *chara):
+async def embrace(ctx, url, name):
   async for command in ctx.history(limit=2):
     if command.author == ctx.author:
       await command.delete()
@@ -1910,17 +1983,17 @@ async def embrace(ctx, url=None, *chara):
     return
 
   url = url.split("?")[0]
-  if not chara:
+  if not name:
     await ctx.send("Please enter the name of someone you want Violet to remember")
     return
-  characters = " ".join(chara).title()
+  characters = name.title()
 
   if "yande.re" in url:
     table = 'yandere'
   elif 'danbooru' in url or 'donmai.us' in url:
     table = 'danbooru'
   else:
-    await ctx.send("Violet can't remember that")
+    await ctx.respond("Violet can't remember that")
     return
 
   try:
@@ -1929,37 +2002,22 @@ async def embrace(ctx, url=None, *chara):
     msg = await ctx.send("That post is already in my heart")
     await asyncio.sleep(30)
     await msg.delete()
-
     return
 
-  res = await ctx.send(f"Violet will remember {characters} from now on for your sake")
+  res = await ctx.respond(f"Violet will remember {characters} from now on for your sake")
   await asyncio.sleep(30)
   await res.delete()
 
 
 
-@violet.command()
+@memories.command(name='get')
 @commands.is_owner()
-async def get(ctx, terms = None):
+async def get(
+    ctx,
+    choice: discord.Option(choices=['Yandere','Danbooru']),
+    hidden: bool=True):
   from Memories import Yandere
-  async for command in ctx.history(limit=2):
-    if command.author == ctx.author:
-      await command.delete()
-      break
-      
-  if terms is None:
-    await ctx.send("Please enter the category")
-    return
-
-  if terms.lower() == 'db':
-    table = "danbooru"
-  elif terms.lower() == 'yd':
-    table = "yandere"
-  else:
-    await ctx.send("No.")
-    return
-
-  data = Database("Memories/Violet's Memories", table).list_data()
+  data = Database("Memories/Violet's Memories", choice.lower()).list_data()
   link = []
   chara = []
   for key, value in data.items():
@@ -1978,43 +2036,29 @@ async def get(ctx, terms = None):
   else:
     embed.set_image(url=link[gacha])
     
-  res = await ctx.send(embed=embed)
-  await asyncio.sleep(300)
-  await res.delete()
+  res = await ctx.respond(embed=embed, ephemeral=hidden)
 
 
 
-@violet.command()
+@memories.command(name='remember')
 @commands.is_owner()
-async def remember(ctx, terms=None, *tags):
+async def remember(
+  ctx,
+  choice: discord.Option(choices=['Yandere','Danbooru']),
+  search: str,
+  hidden: bool=True):
   from MyAnimeList import ordinals
   from Memories import Yandere
-  async for command in ctx.history(limit=2):
-    if command.author == ctx.author:
-      await command.delete()
-      break
-  if terms is None:
-    await ctx.send("Please enter the category")
-    return
-  search = " ".join(tags).title()
 
-  if terms.lower() == 'db':
-    table = "danbooru"
-  elif terms.lower() == 'yd':
-    table = "yandere"
-  else:
-    await ctx.send("No.")
-    return
-
-  raw = Database("Memories/Violet's Memories", table).get_like(tags)
+  raw = Database("Memories/Violet's Memories", choice.lower()).get_like(search.split(" "))
   results = {key:value for key,value in sorted(raw.items(), key=lambda x: x[1])}
   total_post = len([value for key,value in results.items()])
   random_number = random.randint(0,total_post-1)
   random_post = [key for key,value in results.items()][random_number]
   order = ordinals(random_number+1)
 
-  with open(f"Memories/{table.capitalize()}.txt", "w", newline='') as f:
-    f.write(table+"\n\n")
+  with open(f"Memories/{choice}.txt", "w", newline='') as f:
+    f.write(choice+"\n\n")
     for i, (key,value) in enumerate(results.items()):
       f.write(f"{i+1} •「{value.replace(',',' |')}」\n{key}\n\n")
 
@@ -2023,7 +2067,7 @@ async def remember(ctx, terms=None, *tags):
   else:
     post = "post"
 
-  embed = discord.Embed(title=search, description=f"Total {total_post} {post}", url=random_post)
+  embed = discord.Embed(title=search.title(), description=f"Total {total_post} {post}", url=random_post)
   if "yande.re" in random_post:
     yd = Yandere(random_post).post()
 
@@ -2033,15 +2077,16 @@ async def remember(ctx, terms=None, *tags):
     
   else:
     embed.set_image(url=random_post)
-  embed.set_footer(text=f"{order} post of「{search}」")
-  with open(f"Memories/{table.capitalize()}.txt", "rb") as file:
-    await ctx.send(embed=embed, file=discord.File(file))
-  os.remove(f"Memories/{table.capitalize()}.txt")
+  embed.set_footer(text=f"{order} post of「{search.title()}」")
+  with open(f"Memories/{choice}.txt", "rb") as file:
+    await ctx.respond(embed=embed, file=discord.File(file), ephemeral=hidden)
+  os.remove(f"Memories/{choice}.txt")
 
 
 
-@violet.command()
-async def forget(ctx, link=None):
+@memories.command(name='forget')
+@commands.is_owner()
+async def forget(ctx, link):
   async for command in ctx.history(limit=2):
     if command.author == ctx.author:
       await command.delete()
@@ -2068,26 +2113,15 @@ async def forget(ctx, link=None):
 
   pic = discord.Embed(title=get)
   pic.set_image(url=link)
-  await ctx.send("Violet will forget", embed=pic)
+  await ctx.respond("Violet will forget", embed=pic, ephemeral = True)
 
 
 
-@violet.command()
+@memories.command(name='recount')
 @commands.is_owner()
-async def recount(ctx, terms):
-  if terms is None:
-    await ctx.send("Please enter the category")
-    return
+async def recount(ctx, choice: discord.Option(choices=['Yandere','Danbooru'])):
 
-  if terms.lower() == 'db':
-    table = "danbooru"
-  elif terms.lower() == 'yd':
-    table = "yandere"
-  else:
-    await ctx.send("No.")
-    return
-
-  all = Database("Memories/Violet's Memories", table).list_data()
+  all = Database("Memories/Violet's Memories", choice.lower()).list_data()
   data = []
   for url, chara in all.items():
     data.append(chara)
@@ -2103,42 +2137,32 @@ async def recount(ctx, terms):
       counts[i] = 1
 
   top_chara = "\n".join(top(counts, 10))
-  progress = await ctx.send("Violet is trying to remember stuff right now\nPlease wait a moment...")
+  await ctx.respond("Violet is trying to remember stuff right now\nPlease wait a moment...", ephemeral=True)
   from Memories import data_chart
-  data_chart(table,counts,(16,9))
-  await progress.delete()
-  await asyncio.sleep(1)
+  data_chart(choice,counts,(16,9))
 
-  embed = discord.Embed(title=table.capitalize(), description=f"Total {len(data)} Posts in Violet's Memories")
+  embed = discord.Embed(title=choice, description=f"Total {len(data)} Posts in Violet's Memories")
   embed.add_field(name="Top Characters", value=top_chara)
   with open("Memories/Chart.png", "rb") as f:
-    await ctx.send(file=discord.File(f),embed=embed)
+    await ctx.respond(file=discord.File(f),embed=embed, ephemeral = True)
   os.remove("Memories/Chart.png")
 
 
 
-@violet.command()
-async def cate(ctx, terms=None):
-  if terms is None:
-    await ctx.send("Please enter the category")
-    return
-  if terms.lower() == 'db':
-    table = "danbooru"
-  elif terms.lower() == 'yd':
-    table = "yandere"
-  else:
-    await ctx.send("No.")
-    return
+@memories.command(name='precious')
+@commands.is_owner()
+async def cate(ctx):
+  from Memories import Yandere
 
-  progress = await ctx.send("Violet is trying to remember stuff right now\nPlease wait a moment...")
+  await ctx.respond("Violet is trying to remember stuff right now\nPlease wait a moment...", ephemeral=True)
 
-  raw = Database("Memories/Violet's Memories", table).list_data()
+  raw = Database("Memories/Violet's Memories", "yandere").list_data()
 
   tags = []
   for key, value in raw.items():
-    filter = "".join(key.split(".")[:-1]).replace("%28","(").replace("%29",")").replace("_"," ").title().split("%20")[2:]
+    filter = Yandere(key).filter[2:]
     tags += filter
-
+  
   tags_count = {}
   for i in sorted(tags):
     if i in tags_count:
@@ -2148,8 +2172,7 @@ async def cate(ctx, terms=None):
 
   top_tags = "\n".join(top(tags_count, 5))
   from Memories import data_chart
-  data_chart(table,tags_count,(16,9))
-  await progress.delete()
+  data_chart("Yandere",tags_count,(16,9))
   
   embed = discord.Embed(
           title = "Top Yandere Tags",
@@ -2157,17 +2180,139 @@ async def cate(ctx, terms=None):
           )
   
   with open("Memories/Chart.png", "rb") as f:
-    await ctx.send(
+    await ctx.respond(
         embed = embed,
-        file  = discord.File(f))
+        file  = discord.File(f),
+        ephemeral = True
+        )
     
   os.remove("Memories/Chart.png")
+
+
+
+@memories.command(name='contents')
+@commands.is_owner()
+async def category(ctx):
+  from Memories import Yandere
+  
+  raw = Database("Memories/Violet's Memories", "yandere").list_data()
+  
+  tags = []
+  for key, value in raw.items():
+    filter = Yandere(key).filter[2:]
+    tags += filter
+
+  tags_list = set()
+  for i in tags:
+    tags_list.add(i)
+
+  formatted = [f"- {i}" for i in sorted(tags_list)]
+
+  with open("Memories/Tags.txt","w", newline='') as f:
+    f.write("Available Tags\n\n")
+    f.write("\n".join(formatted))
+
+  with open("Memories/Tags.txt","rb") as file:
+    await ctx.respond(f"{ctx.author.mention}, here you go",file=discord.File(file), ephemeral=True)
+  os.remove("Memories/Tags.txt")
+
+
+
+
+"""
+Deep Learning Series
+------------------------
+No description yet
+"""
+
+dl = violet.create_group(name="deeplearning")
+
+@dl.command(name = 'deepbooru')
+async def deepbooru(
+  ctx,
+  image: discord.Attachment,
+  hidden:bool=False
+):
+  if ctx.author != violet.get_user(owner):
+    hidden = False
+
+  await ctx.respond("Violet is trying to think about stuff right now\nPlease wait a moment...", ephemeral=True)
+  
+  tags = Deepbooru(image)
+  top_tag = next(iter(tags))
+  _,*rest = tags.items()
+
+  display = discord.Embed(
+    title=f"Top Tag 「{top_tag}」",
+    description=f"Results\n{str(tags[top_tag])[:5]} Accuracy",
+    url=f"https://danbooru.donmai.us/posts?tags={top_tag.replace(' ','_').lower()}"
+  )
+
+  for tag, accuracy in dict(rest).items():
+    display.add_field(
+      name=f"• 「{tag}」",
+      value=f"{str(accuracy)[:5]} Accuracy"
+      )
+    
+  display.set_image(url=image)
+  display.set_footer(text="Using Deepbooru Model")
+  display.set_thumbnail(url=bot_info.image_url)
+  await ctx.respond(embed=display, ephemeral=hidden)
+
+
+
+@dl.command(name='stablediffusion')
+@commands.is_owner()
+async def stablediffusion(ctx, prompt):
+  await ctx.respond(
+    "少々お待ちください",
+    ephemeral=True
+  )
+  
+  results = StableDiffusion().input(prompt)
+  
+  embed = discord.Embed(
+    title = prompt.title(),
+    color = 0xFFFFFF,
+    description = f"Negative Prompts: {results['negative_prompt']}"
+  )
+  embed.set_author(
+    name = "Stable Diffusion by Stability AI",
+    url = "https://stability.ai/blog/stable-diffusion-public-release",
+    icon_url = "https://pbs.twimg.com/profile_images/1605286457207410701/Tac59LxK_400x400.jpg"
+  )
+  embed.set_image(url=results['image_url'])
+
+  embed.set_footer(
+    text=f"Resolution: {results['dimensions']}\nSteps: {results['steps']}\nGuidance Scale: {results['scale']}\nScheduler: {results['scheduler']}"
+  )
+  await ctx.respond(embed=embed)
+
+
+
+"""
+Nostalgia
+-------------
+Prefix commands version
+"""
+
+prefix = os.listdir("PrefixCommands")
+prefix_list = [
+  i.split(".")[0] for i in prefix
+]
+
+for prefix in prefix_list:
+  violet.load_extension(f'PrefixCommands.{prefix}')
+
+
+violet.load_extension('Commands.app_command')
 
 
 
 
 """
 Violet's Soul
+-----------------
 Everything that keeps Violet alive
 """
 
