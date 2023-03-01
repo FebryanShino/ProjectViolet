@@ -1,0 +1,130 @@
+:root {
+  --purple: rgb(123, 31, 162);
+  --violet: rgb(103, 58, 183);
+  --pink: rgb(244, 143, 177);
+}
+
+@keyframes background-pan {
+  from {
+    background-position: 0% center;
+  }
+  to {
+    background-position: -200% center;
+  }
+}
+
+
+body {
+  background: linear-gradient(
+    to bottom,
+    rgb(10,10,10),
+    var(--violet)
+  );
+}
+
+
+h1 {
+  background-color: #7353aa;
+  text-align: center;
+  margin-top: -10px;
+  margin-left: -10px;
+  margin-right: -10px;
+  font-size: 60px;
+  color: #fbf2d8;
+  margin-bottom: 60px;
+  padding:0;
+  font-family: "Montserrat";
+}
+
+
+
+
+.welcome {
+  font-size: clamp(40px, 10vw, 50px);
+  font-weight: 400;
+  margin: 0px;
+  padding: 20px;
+  text-align: center;
+  animation: background-pan 3s linear infinite;
+  background: linear-gradient(
+    to right,
+    var(--purple),
+    var(--violet),
+    var(--pink),
+    var(--purple)
+  );
+  background-size: 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-family: "Rubik";
+  white-space: nowrap;
+}
+
+
+.container {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
+  margin-bottom: 70px;
+  margin-right:100px;
+}
+
+
+.circle-img {
+	width: 300px;
+	height: 300px;
+  margin: auto;
+	border-radius: 50%;
+	background-image: url('https://pbs.twimg.com/media/FpUeR6FakAQslJC?format=jpg&name=medium');
+	background-size: cover;
+}
+
+
+.intro {
+  font-size: 40px;
+	margin: 20px;
+  margin-right: -20px;
+	line-height: 1.5;
+	color: #7353aa;
+	flex: 1;
+  font-family: "Arial";
+}
+
+
+.social {
+  font-size: 14px;
+  font-family: "Arial";
+  margin-top: 20px;
+}
+  
+
+.desc {
+  animation: background-pan 3s linear infinite;
+  background: linear-gradient(
+    to right,
+    #dbbba3,
+    gold,
+    white,
+    #dbbba3
+  );
+  background-size: 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-family: "Rubik";
+  white-space: nowrap;
+  font-size: clamp(10px, 4vw, 20px);
+  margin-top: 130px;
+  margin-bottom: 470px;
+  border: 1px solid #dbbba3;
+  padding: 10px;
+  font-family: "Arial";
+}
+
+
+author {
+	font-size: 14px;
+	color: #f4ece2;
+	margin-top: 20px;
+  font-family: "Arial";
+}
