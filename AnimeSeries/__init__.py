@@ -31,10 +31,11 @@ class WaifuIm:
   def __init__(self, type):
     self.url = f"https://api.waifu.im/{type}/"
 
-  def waifu(self, tags, nsfw):
+  def waifu(self, tags):
+    tags = list(tags)
     par = {
            'included_tags': tags,
-           'is_nsfw'      : nsfw
+           'is_nsfw'      : 'null'
           }
     res = requests.get(self.url,params=par).json()['images'][0]
     

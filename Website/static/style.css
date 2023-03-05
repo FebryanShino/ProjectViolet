@@ -13,25 +13,36 @@
   }
 }
 
+
 body {
-  background: linear-gradient(to bottom, rgb(10, 10, 10), var(--violet));
+  background: linear-gradient(
+    to bottom,
+    rgb(10,10,10),
+    var(--violet)
+  );
 }
+
 
 h1 {
   background-color: #7353aa;
   text-align: center;
-  margin: -10px;
+  margin-top: -10px;
+  margin-left: -10px;
+  margin-right: -10px;
   font-size: 60px;
   color: #fbf2d8;
   margin-bottom: 60px;
-  padding: 0;
+  padding:0;
   font-family: "Montserrat";
 }
+
+
+
 
 .welcome {
   font-size: clamp(40px, 10vw, 50px);
   font-weight: 400;
-  margin: 0;
+  margin: 0px;
   padding: 20px;
   text-align: center;
   animation: background-pan 3s linear infinite;
@@ -49,39 +60,44 @@ h1 {
   white-space: nowrap;
 }
 
+
 .container {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: center;
   margin-bottom: 70px;
-  margin-right: 100px;
+  margin-right:100px;
 }
 
+
 .circle-img {
-  width: 300px;
-  height: 300px;
+	width: 300px;
+	height: 300px;
   margin: auto;
-  border-radius: 50%;
-  background-image: url('https://pbs.twimg.com/media/FpUeR6FakAQslJC?format=jpg&name=medium');
-  background-size: cover;
+	border-radius: 50%;
+	background-image: url('https://pbs.twimg.com/media/FpUeR6FakAQslJC?format=jpg&name=medium');
+	background-size: cover;
 }
+
 
 .intro {
   font-size: 40px;
-  margin: 20px;
+	margin: 20px;
   margin-right: -20px;
-  line-height: 1.5;
-  color: #7353aa;
-  flex: 1;
+	line-height: 1.5;
+	color: #7353aa;
+	flex: 1;
   font-family: "Arial";
 }
+
 
 .social {
   font-size: 14px;
   font-family: "Arial";
   margin-top: 20px;
 }
+  
 
 .desc {
   animation: background-pan 3s linear infinite;
@@ -90,7 +106,8 @@ h1 {
     #dbbba3,
     gold,
     white,
-    #dbbba3);
+    #dbbba3
+  );
   background-size: 200%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -104,9 +121,10 @@ h1 {
   font-family: "Arial";
 }
 
+
 author {
-  font-size: 14px;
-  color: #f4ece2;
-  margin-top: 20px;
+	font-size: 14px;
+	color: #f4ece2;
+	margin-top: 20px;
   font-family: "Arial";
 }

@@ -49,7 +49,7 @@ class StableDiffusion:
   def input(
             self,
             prompt,
-            negative_prompt,
+            negative_prompt=None,
             dimensions="768x768",
             total_img = 1,
             steps = 25,
@@ -74,40 +74,3 @@ class StableDiffusion:
       'scheduler': scheduler,
       'scale': scale
     }
-
-
-
-class PastelMix:
-
-
-  def __init__(self):
-    client = replicate.Client(REPLICATE_API)
-    base = client.models.get('elct9620/pastel-mix')
-    self.model = base.versions.get('ba8b1f407cd6418fa589ca73e5c623c081600ecff19f7fc3249fa536d762bb29')
-
-  def input(
-    self,
-    prompt,
-    negative_prompt,
-    width,
-    height,
-    steps,
-    guidance,
-    seed,
-    hires
-  ):
-    inputs = {
-      'prompt': prompt,
-      'neg_prompt': negative_prompt,
-      'width': width,
-      'height': height,
-      'steps': steps,
-      'guidance': guidance,
-      'seed': seed,
-      'hires': hires
-    }
-    output = self.model.predict(**inputs)
-    return output
-
-
-

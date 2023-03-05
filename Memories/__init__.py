@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import heapq
 from MyAnimeList import ordinals
-import matplotlib.font_manager as fm
+
 
 class Yandere:
   """
@@ -12,14 +12,13 @@ class Yandere:
 
   def __init__(self, post):
     self.url = post
-    self.filter = "".join(self.url.split(".")[:-1]).replace("%28","(").replace("%29",")").replace("_"," ").replace("%3A",":").replace("%27","'").replace("%21","!").replace("%40","@").title().split("%20")
+    self.filter = "".join(self.url.split(".")[:-1]).split("%20")
   
   def post(self):
-    tags = "\n".join(["• "+i.title() for i in self.filter[2:]])
+    tags = "\n".join(["• "+i.title() for i in self.filter[2:]]).replace("%28","(").replace("%29",")")
     url = f"https://yande.re/post/show/{self.filter[1]}"
     sample = f"https://files.yande.re/sample/{'/'.join(self.url.split('/')[4:])}"
-    return {
-            'tags': tags,
+    return {'tags': tags,
             'post_url': url,
             'sample': sample
            }
@@ -36,7 +35,6 @@ def data_chart(
   Main purpose is for
   'recount' and 'cate' commands
   """
-  fprop = fm.FontProperties(fname='Memories/font.otf')
 
                 
   chara = [key for key,value in data.items()]
@@ -48,7 +46,7 @@ def data_chart(
   ax.set_title(table.capitalize())
   ax.set_xlabel("Character's Names")
   ax.set_ylabel("Total Posts")
-  ax.set_xticks(range(len(chara)), fontproperties=fprop)
+  ax.set_xticks(range(len(chara)))
   ax.set_xticklabels(chara, rotation=-90)
   plt.subplots_adjust(wspace=0.5)
   fig.tight_layout()
