@@ -13,7 +13,7 @@ class MyAnimeList:
     """
 
     def __init__(self, name):
-      self.name = " ".join(name)
+      self.name = name
       parameters = {'q': self.name}
       anime = requests.get("https://api.jikan.moe/v4/anime?", params=parameters)
       self.res = anime.json()['data'][0]
@@ -38,15 +38,15 @@ class MyAnimeList:
       image = self.res['images']['jpg']['large_image_url']
 
       if season == 'summer':
-        color = "#f9d62e"
+        color = 0xf9d62e
       elif season == 'spring':
-        color = '#c6d7b9'
+        color = 0xc6d7b9
       elif season == 'fall':
-        color = '#f05133'
+        color = 0xf05133
       elif season == 'winter':
-        color = '#e3e3ff'
+        color = 0xe3e3ff
       else:
-        color = '#2e51a1'
+        color = 0x2e51a1
       
       return {'season': season,
               'type': type,
@@ -67,7 +67,7 @@ class MyAnimeList:
     """
 
     def __init__(self, name):
-      self.name = " ".join(name)
+      self.name = name
       params = {'q': self.name}
       user = requests.get("https://api.jikan.moe/v4/users", params=params)
       self.res = user.json()['data'][0]
@@ -91,7 +91,7 @@ class MyAnimeList:
     """
 
     def __init__(self, name):
-      self.name = " ".join(name)
+      self.name = name
       params = {'q': self.name}
       chara = requests.get("https://api.jikan.moe/v4/characters", params=params)
       self.res = chara.json()['data'][0]

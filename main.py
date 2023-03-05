@@ -43,7 +43,7 @@ from Discord import FileNames
 from AnimeSeries import Kyoko,WaifuIm
 from Lyrics import parts, lyrics_list
 from Database import Database
-from DeepLearning import StableDiffusion, Deepbooru
+from DeepLearning import StableDiffusion, PastelMix, Deepbooru
 from OpenAI import OpenAI, OpenAIData, CropSquare
 
 
@@ -147,7 +147,10 @@ Wanna learn about Violet?
 - helpme  : Need help, goshuujin-sama?
 """
 
-@violet.command(name='violet')
+@violet.command(
+  name='violet',
+  description="Violet's Business Card"
+)
 async def botinfo(ctx):
   author_avatar = violet.get_user(owner).avatar
   
@@ -213,7 +216,10 @@ Slash Command
 
 status = violet.create_group(name='status')
 
-@status.command(name='statistics')
+@status.command(
+  name='statistics',
+  description='The statistics of status that Violet has'
+)
 async def statistics(ctx):
   await ctx.respond("Creating a chart\nPlease wait a moment...")
   
@@ -238,8 +244,6 @@ async def addstatus(
   ),
   name
 ):
-  available = ['listening','playing','watching']
-
   with open("Violet/status.csv","a",newline = '') as status:
     writer = csv.writer(status)
     writer.writerow([activity.lower(), name])
@@ -301,12 +305,25 @@ souldl : Learn more deeply about a specific
          part from Violet's Directory
 """
 
-@violet.command()
-async def soul(ctx, path = None, action = None):
-  
-  if path is None:
-    path = "."
+body = violet.create_group(name='soul')
 
+@body.command(name='find')
+async def soul(
+  ctx,
+  main: discord.Option(
+    choices=[
+      i for i in sorted(os.listdir(), key= lambda p: p.lower()) if "." not in i
+    ]
+  )=".",
+  advance=""
+):
+  path = f"{main}/{advance.strip() if not None else ''}"
+  
+  if path == './':
+    location = "Home"
+  else:
+    location = f"Home/{main}/{advance.strip()}"
+  
   try:
     python_programs = []
     main = []
@@ -332,14 +349,18 @@ async def soul(ctx, path = None, action = None):
       else:
         others.append("• " + i)
 
-  except:
-    await ctx.send("Can't find the directory")
+  except FileNotFoundError:
+    await ctx.respond("Can't find the directory")
     return
   embed = discord.Embed(
-    title=f"{bot_info.bot_name}の体",
-    url = bot_info.repository,
-    description = "私のすべて",
+    title=f"{bot_info.bot_name}の世界",
+    description = f"**[{location}]({(bot_info.repository + '/tree/main/' + path).replace('./','')})**",
     color = bot_info.color
+  )
+  embed.set_author(
+    name = bot_info.bot_name,
+    icon_url = bot_info.image_url,
+    url = bot_info.repository
   )
 
   if main != []:
@@ -369,7 +390,7 @@ async def soul(ctx, path = None, action = None):
     embed.add_field(name="Violet's Other Stuff", value= "\n".join(others))
 
   embed.set_image(url = bot_info.image_url2)
-  await ctx.send(embed=embed)
+  await ctx.respond(embed=embed)
 
 
 
@@ -597,6 +618,7 @@ It's FebryanS so you should expect that
           amount of an atom/molecules
 """
 
+
 @violet.command(name='pow')
 async def pow(ctx, a: float, b: float):
     await ctx.send(a**b)
@@ -630,21 +652,75 @@ async def area(ctx, formula: str, a: float, b: float = None, c: float = None):
 
 
 
-@violet.command(name='moles')
-async def moles(ctx, find: str, a: float):
-  AV_N = 6.02e23
-  if find == 'mol':
-    await ctx.send(f'The moles amount of **{a} particles** is **{a/AV_N} moles**')
+from Calculation import AtomTheory
+atom = violet.create_group(name="atom")
 
-  if find == 'partikel':
-    result = str(format(a*AV_N))
+
+@atom.command(name='particles')
+async def aparticles(
+  ctx,
+  particles=None,
+  moles: float=None
+):
+  try:
+    particles = float(particles)
+  except TypeError:
+    pass
+
+  base = AtomTheory(
+    particles = particles,
+    moles = moles
+  )
+  try:
+    result = base.get_particles()
+    await ctx.respond(result)
+  except TypeError:
+    await ctx.respond("バカですね．．．", ephemeral=True)
+
+
+@atom.command(name='volume')
+async def avolume(
+  ctx,
+  volume: float=None,
+  moles: float=None,
+  pressure: float=None,
+  temperature: float=None,
+):
+  base = AtomTheory(
+    volume = volume,
+    moles = moles,
+    pressure = pressure,
+    temperature = temperature 
+  )
+  try:
     try:
-      base = result.split('e')[0]
-      power = result.split('e')[1].replace("+","")
-      
-      await ctx.send(f'The particle amound of **{a} moles** is **{base} x 10^{power}**')
-    except:
-      await ctx.send(f'The particle amound of **{a} moles** is **{result}**')
+      result = base.get_volume()
+    except TypeError:
+      result = base.get_volume("STP")
+    await ctx.respond(result)
+  except TypeError:
+    await ctx.respond("バカですね．．．", ephemeral=True)
+
+
+@atom.command(name='mass')
+async def amass(
+  ctx,
+  mass: float=None,
+  moles: float=None,
+  molar_mass: float=None
+):
+  base = AtomTheory(
+    mass = mass,
+    moles = moles,
+    molar = molar_mass
+  )
+  try:
+    result = base.get_mass()
+    await ctx.respond(result)
+  except TypeError:
+    await ctx.respond("バカですね．．．", ephemeral=True)
+
+
 
 
 
@@ -720,16 +796,33 @@ async def ly(ctx, title):
   except:
     embed_color = discord.Color.blue()
     
-  lyrics = discord.Embed(title = title, url = song['song'], description = artist, color = embed_color)
+  lyrics = discord.Embed(
+    title = title, url = song['song'],
+    description = artist,
+    color = embed_color
+  )
   if song['song'] != "":
-    lyrics.add_field(name="Track Information", value=f"**Disc {song['disc']} Track** {song['track']}\n**Genre:** {song['genre']}\n\n{times(song['time'])}")
+    lyrics.add_field(
+      name="Track Information",
+      value=f"**Disc {song['disc']} Track** {song['track']}\n**Genre:** {song['genre']}\n\n{times(song['time'])}"
+    )
   if content[4].lower().strip() != 'instrumental music':
     for row in the_rest:
-      lyrics.add_field(name = "", value = row)
+      lyrics.add_field(
+        name = "",
+        value = row
+      )
   else:
-    lyrics.add_field(name="", value="**Instrumental Song**\nLet the music play")
+    lyrics.add_field(
+      name="",
+      value="**Instrumental Song**\nLet the music play"
+    )
   if song['preview'] != "":
-    lyrics.add_field(name="", value = f"[{title} Preview]({song['preview']})")
+    lyrics.set_author(
+      name="Preview",
+      url = song['preview'],
+      icon_url = song['art']
+    )
   lyrics.set_image(url=song['art'])
   lyrics.set_footer(text=f"{song['album']}\nPrice: {song['price']}")
   await ctx.respond(embed = lyrics)
@@ -825,7 +918,10 @@ async def lycolor(ctx, color: str, name):
 
 
 
-@lyrics.command(name='list', description='List of the available lyrics')
+@lyrics.command(
+  name='list',
+  description='List of the available lyrics'
+)
 async def lylist(
   ctx,
   type: discord.Option(
@@ -853,23 +949,39 @@ async def lylist(
   await ctx.respond(embed=embed, ephemeral=hidden)
 
 
-@violet.command()
-async def lyrefresh(ctx):
+@lyrics.command(
+  name='statistics',
+  description='Artist statistics'
+)
+async def lystats(ctx):
   songs = sorted(
     os.listdir("Lyrics/Title"),
     key=lambda title: title.lower()
   )
+  artist_list = []
   for song in songs:
     with open(f"Lyrics/Title/{song}", "r") as f:
       info = f.readlines()
-      titles = info[0].replace("\n","")
       artists = info[1].split(" by ")[1].replace("\n","")
-    with open("Lyrics/song_titles.csv","a") as save:
-      writer = csv.writer(save)
-      writer.writerow([titles,artists])
+    artist_list.append(artists)
 
-    
-  await ctx.send("I'm done!!!")
+  counts = {}
+  for i in artist_list:
+    if i in counts:
+      counts[i] += 1
+    else:
+      counts[i] = 1
+  await ctx.respond("ちょっと待ってくださいね～", ephemeral=True)
+  from Memories import data_chart
+  data_chart(
+    "Artist Statistics",
+    counts,
+    (16,9)
+  )
+  with open("Memories/Chart.png","rb") as f:
+    await ctx.respond(file=discord.File(f))
+
+  os.remove("Memories/Chart.png")
 
 
 
@@ -1419,13 +1531,18 @@ async def ytlist(ctx, action = None, attribute = None):
       channel_icon = ""
 
       
-    video_format = "\n".join(["• " + i for i in video_list])
-    audio_format = "\n".join(["• " + i for i in audio_list])
+    video_format = ["• " + i for i in video_list]
+    audio_format = ["• " + i for i in audio_list]
+    print(video_format)
       
     data_list = discord.Embed(title="YouTube Database", url= random_url, color=discord.Color.red())
-    data_list.add_field(name="Video", value=video_format)
-    data_list.add_field(name="Audio", value=audio_format)
-
+    data_list.add_field(name="Video", value="")
+    for i in parts(video_format, 10):
+      data_list.add_field(name='',value="\n".join(i))
+      
+    data_list.add_field(name="Audio", value='')
+    for i in parts(audio_format, 10):
+      data_list.add_field(name='',value="\n".join(i))
     data_list.set_thumbnail(url=bot_info.image_url)
     data_list.set_image(url = thumbnail)
     data_list.set_footer(text=yt_title, icon_url=channel_icon)
@@ -2263,13 +2380,16 @@ async def deepbooru(
 
 @dl.command(name='stablediffusion')
 @commands.is_owner()
-async def stablediffusion(ctx, prompt):
+async def stablediffusion(
+  ctx,
+  prompt,
+  negative_prompt=None):
   await ctx.respond(
     "少々お待ちください",
     ephemeral=True
   )
   
-  results = StableDiffusion().input(prompt)
+  results = StableDiffusion().input(prompt,negative_prompt)
   
   embed = discord.Embed(
     title = prompt.title(),
@@ -2289,6 +2409,38 @@ async def stablediffusion(ctx, prompt):
   await ctx.respond(embed=embed)
 
 
+#WIP
+@dl.command(name='pastel-mix')
+async def pastelmix(
+  ctx,
+  prompt:str,
+  negative_prompt: str=None,
+  width: int=512,
+  height: int=512,
+  steps: int=20,
+  hires: bool=True,
+  guidance: int=7,
+  seed: int=0
+):
+  await ctx.respond(
+    f"Generating\n{prompt.title()}\nNegative prompts: {negative_prompt}\nDimensions: {width}x{height}\nSteps: {steps}\nGuidance: {guidance}\nHires: {hires}\nSeed: {seed}"
+  )
+  prediction = PastelMix().input(
+    prompt,
+    negative_prompt,
+    width,
+    height,
+    steps,
+    guidance,
+    seed,
+    hires
+  )
+  embed = discord.Embed(title=prompt.title())
+  #embed.set_image(url=prediction[0])
+  print(list(prediction[0]))
+  await ctx.respond(embed=embed)
+
+
 
 """
 Nostalgia
@@ -2296,9 +2448,9 @@ Nostalgia
 Prefix commands version
 """
 
-prefix = os.listdir("PrefixCommands")
+prefixs = os.listdir("PrefixCommands")
 prefix_list = [
-  i.split(".")[0] for i in prefix
+  i.split(".")[0] for i in prefixs
 ]
 
 for prefix in prefix_list:
@@ -2306,7 +2458,6 @@ for prefix in prefix_list:
 
 
 violet.load_extension('Commands.app_command')
-
 
 
 
