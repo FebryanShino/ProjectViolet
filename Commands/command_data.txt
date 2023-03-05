@@ -1,0 +1,80 @@
+Interact With Violet
+!helpme
+!botinfo
+!soul
+!souldl  >> Only for FebryanS
+!status
+!addstatus  >> Only for FebryanS
+!greet
+!praise
+!bruh
+!sortstatus
+!setstatus  >> Only for FebryanS
+!whoareyou
+!nournot
+
+Interact With Users
+!call
+!ping
+!say
+
+OpenAI Series
+!chatgpt
+!code
+!imagine
+!var
+!openai >> Only for FebryanS
+
+All About Math
+!pow
+!calc
+!area
+!moles
+
+Conversion Series
+!decimal
+!binary
+!hexa
+!octal
+
+Lyrics Series
+!ly
+!lysave
+!lydel  >> Only for FebryanS
+!lycolor
+!lylist
+
+Have Fun With Violet
+!rate
+!loop
+!excel
+!txt
+
+Memories >> Only for FebryanS
+!embrace
+!get
+!recount
+
+Database
+!data
+!notes
+!url
+
+API Series
+!short
+!qr
+!urban
+
+YouTube Series
+!yt
+!ytdl
+!ytlist
+!pp
+!thumb
+
+MyAnimeList
+!mal
+
+Image Series
+!color
+!square

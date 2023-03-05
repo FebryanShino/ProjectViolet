@@ -1,0 +1,15 @@
+LICENSE
+README.md
+setup.cfg
+setup.py
+waifuim/__init__.py
+waifuim/aioclient.py
+waifuim/exceptions.py
+waifuim/moduleinfo.py
+waifuim/types.py
+waifuim/utils.py
+waifuim.py.egg-info/PKG-INFO
+waifuim.py.egg-info/SOURCES.txt
+waifuim.py.egg-info/dependency_links.txt
+waifuim.py.egg-info/requires.txt
+waifuim.py.egg-info/top_level.txt

@@ -1,0 +1,14 @@
+DEBUG:root:This is a debug message
+INFO:root:This is an info message
+WARNING:root:This is a warning message
+ERROR:root:This is an error message
+WARNING:discord.client:PyNaCl is not installed, voice will NOT be supported
+DEBUG:asyncio:Using selector: EpollSelector
+INFO:werkzeug:[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8080
+ * Running on http://172.31.128.144:8080
+INFO:werkzeug:[33mPress CTRL+C to quit[0m
+INFO:discord.client:logging in using static token
+INFO:werkzeug:172.31.128.1 - - [15/Jan/2023 08:42:18] "GET / HTTP/1.1" 200 -
+INFO:werkzeug:172.31.128.1 - - [15/Jan/2023 08:44:57] "HEAD / HTTP/1.1" 200 -
