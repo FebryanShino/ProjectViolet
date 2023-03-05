@@ -1,38 +1,37 @@
+<!DOCTYPE html>
 <html>
-  <head>
-    <title>My Website</title>
-    <style>
-    body {
-      margin: 0;
-      padding: 0;
-    }
-
-    .container {
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-
-    h1 {
-      font-size: 55px;
-      font-weight: bold;
-      margin: 20px 0;
-    }
-
-    p {
-      font-size: 33px;
-      line-height: 1.5;
-      margin: 20px 0;
-    }
-    </style>
-  </head>
-  <body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ヴァイオレット</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>ヴァイオレット</h1>
+    <div class="cover"></div>
+    <p class="welcome">Welcome to Violet's Website</p>
     <div class="container">
-      <h1>
-        Hello World
-      </h1>
-      <p>
-        <a href="https://github.com/FebryanShino/Violet-bot">FebryanS Github</a>
-      </p>
-  </body>
+      <div class="circle-img"></div>
+      <p class="intro">Violet is a multifunctional bot created by FebryanS (Shinomiya#2049)</p>
+      <a href="{{rep_url}}">Violet's Repository</a>
+    </div>
+    <p class="social">
+      My Creator's SNS<br>
+      <a href="{{g_url}}">• GitHub</a><br>
+      <a href="{{t_url}}">• Twitter</a><br>
+      • Discord: Shinomiya#2409
+    </p>
+    <p class="desc">
+      Violet can do everything you want, at least that's what my creator aims<br>
+      If you have some ideas to share, feel free to DM my creator (Shinomiya#2409)<br>
+      <br>
+      Sincerely,<br>
+      ヴァイオレット
+    </p>
+    <p>
+      <author>2023@FebryanS</author>
+    </p>
+  </header>
+</body>
 </html>
