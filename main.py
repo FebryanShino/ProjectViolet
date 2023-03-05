@@ -201,6 +201,7 @@ async def helpme(ctx):
 
 
 
+
 """
 Violet's Status Series
 --------------------------
@@ -293,6 +294,8 @@ async def setstatus(
     action = f"{action} to"
   await violet.change_presence(activity=discord.Activity(type=act, name=status))
   await ctx.respond(f'Status set to: {action} {status}', ephemeral=True)
+
+
 
 
 """
@@ -618,7 +621,6 @@ It's FebryanS so you should expect that
           amount of an atom/molecules
 """
 
-
 @violet.command(name='pow')
 async def pow(ctx, a: float, b: float):
     await ctx.send(a**b)
@@ -719,8 +721,6 @@ async def amass(
     await ctx.respond(result)
   except TypeError:
     await ctx.respond("バカですね．．．", ephemeral=True)
-
-
 
 
 
