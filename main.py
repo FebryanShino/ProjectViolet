@@ -1887,7 +1887,7 @@ async def quote(
 async def yd(
   ctx: discord.ApplicationContext,
   tags: str,
-  limit: int=1000,
+  limit: int=100,
   hidden: bool=True
 ):
   from MyAnimeList import ordinals
