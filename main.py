@@ -41,7 +41,7 @@ from Memories import top
 from Website import Heart
 from YouTube import ytAPI
 from Discord import FileNames
-from AnimeSeries import Kyoko,WaifuIm
+from AnimeSeries import Kyoko, WaifuIm, Yandere, Danbooru
 from Lyrics import parts, lyrics_list
 from Database import Database
 from DeepLearning import StableDiffusion, PastelMix, Deepbooru
@@ -945,12 +945,23 @@ async def lylist(
       )
   page_list = []
   for i,part in enumerate(parts(format_beta,25)):
-    embed = discord.Embed(title='Lyrics List', color = discord.Color.random())
+    embed = discord.Embed(
+      title='Lyrics List',
+      color = bot_info.color
+    )
     page_list.append(embed)
     
     page_list[i].add_field(
       name = f"Page {i+1}",
       value= "\n".join(part)
+    )
+    page_list[i].set_author(
+      name = f"By {violet.get_user(bot_info.owner)}",
+      icon_url = violet.get_user(bot_info.owner).avatar
+    )
+    page_list[i].set_footer(
+      text="My creator do really love musics",
+      icon_url = bot_info.image_url
     )
   paginator = pages.Paginator(
     pages = page_list,
@@ -1872,6 +1883,110 @@ async def quote(
 
 
 
+@anime.command(name='yandere')
+async def yd(
+  ctx: discord.ApplicationContext,
+  tags: str,
+  limit: int=1000,
+  hidden: bool=True
+):
+  from MyAnimeList import ordinals
+  
+  start = time.perf_counter()
+  try:
+    posts_raw = Yandere(tags).get_post(limit)
+  except TypeError:
+    ctx.respond("Violet can't find it, please enter it in yande.re tags format ;)", ephemeral=True)
+    return
+  end = time.perf_counter()
+  
+  posts = []
+  for i, post in enumerate(posts_raw):
+    embed = discord.Embed(
+      title = "Source",
+      url = post['source']
+    )
+    posts.append(embed)
+    posts[i].set_image(
+      url=post['sample_url']
+    )
+    posts[i].add_field(
+      name = "Information",
+      value= f"ID: {post['id']}\nImage Size: {str(post['file_size']/1024/1024)[:4]} MB\nImage Dimensions: {post['width']}x{post['height']}"
+    )
+    posts[i].add_field(
+      name="Tags",
+      value = post['tags'].replace(" ","\n").replace("_"," ").title()
+    )
+    posts[i].set_footer(
+      text=f"Time elapsed: {str(end-start)[:4]} Seconds\n{ordinals(i+1)} Page"
+    )
+    posts[i].set_author(
+      name = "File Url",
+      icon_url = post['preview_url'],
+      url = post['file_url']
+    )
+
+  paginator = pages.Paginator(
+    pages = posts,
+    loop_pages = True,
+    show_indicator = False
+  )
+  await paginator.respond(ctx.interaction, ephemeral=hidden)
+
+
+@anime.command(name='danbooru')
+async def danbooru(
+  ctx: discord.ApplicationContext,
+  tags: str,
+  limit: int
+):
+  def tagf(tag):
+    tag = tag.replace(" ","\n").replace("_"," ").title()
+    return tag
+
+  await ctx.respond("This might take a while", ephemeral=True)
+  
+  start = time.perf_counter()
+  base = Danbooru.get_post(tags, limit)
+  end = time.perf_counter()
+
+  posts = []
+  for i, value in enumerate(base):
+    embed = discord.Embed()
+    posts.append(embed)
+    try:
+      posts[i].set_image(
+      url = value['file_url']
+    )
+    except KeyError:
+      pass
+    posts[i].add_field(
+      name = "Characters",
+      value = tagf(value['tag_string_character'])
+    )
+    posts[i].add_field(
+      name = "Series",
+      value = tagf(value['tag_string_copyright'])
+    )
+    posts[i].add_field(
+      name = "Tags",
+      value = tagf(value['tag_string_general'])
+    )
+    posts[i].set_author(
+      name = value['tag_string_artist']
+    )
+    posts[i].set_footer(
+      text = f"Time elapsed: {str(end-start)[:4]}"
+    )
+  paginator = pages.Paginator(
+    pages = posts,
+    loop_pages = True
+  )
+  await paginator.respond(ctx.interaction, ephemeral=True)
+
+    
+
 
 """
 Image Series
@@ -2382,8 +2497,8 @@ async def deepbooru(
   end = time.perf_counter()
 
   display = discord.Embed(
-    title=f"Top Tag 「{top_tag}」",
-    description=f"Results\n{str(tags[top_tag])[:5]} Accuracy",
+    title=f"「{top_tag}」",
+    description=f"{str(tags[top_tag])[:5]} Accuracy",
     url=f"https://danbooru.donmai.us/posts?tags={top_tag.replace(' ','_').lower()}"
   )
 
@@ -2395,7 +2510,8 @@ async def deepbooru(
     
   display.set_image(url=image)
   display.set_footer(
-    text=f"Time elapsed: {str(end-start)[:4]} seconds")
+    text=f"Time elapsed: {str(end-start)[:4]} seconds"
+  )
   display.set_thumbnail(url=bot_info.image_url)
   display.set_author(
     name = "DeepDanbooru",

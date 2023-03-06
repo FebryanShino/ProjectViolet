@@ -3,6 +3,7 @@ Anime Series Resources
 """
 
 import requests
+import random
 
 class Kyoko:
   """
@@ -43,6 +44,43 @@ class WaifuIm:
             'source': res['source'],
             'color' : res['dominant_color']
            }
+    
+
+
+class Yandere:
+  def __init__(self, tags):
+    self.tags = tags
+    response = requests.post("https://febryans-wakaranai.hf.space/run/predict", json={
+      "data": [
+        self.tags,
+      ]
+    }).json()
+    self.data = response["data"][0]['data']
+
+  def get_post(self, limit):
+    posts = []
+    counter = 0
+    while counter < limit:
+      post = random.choice(self.data)
+      if post not in posts:
+        posts.append(post)
+        counter += 1
+      if len(posts) == len(self.data)+1:
+        break
+    return posts
+
+
+
+class Danbooru:
+  def get_post(tags, limit):
+    response = requests.post("https://febryans-danbooru.hf.space/run/predict", json={
+      "data": [
+        tags,
+        limit
+      ]
+    }).json()
+    data = response['data'][0]['data']
+    return data
     
 
 
