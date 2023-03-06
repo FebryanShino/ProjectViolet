@@ -12,7 +12,7 @@ Modules Collection
 ---------------------
 """
 import discord
-from discord.ext import commands
+from discord.ext import commands, pages
 import os
 from ratelimiter import RateLimiter
 from sympy import *
@@ -20,6 +20,7 @@ import math
 import random
 import requests
 import asyncio
+import time
 import qrcode
 import sqlite3
 import csv
@@ -838,7 +839,7 @@ async def lysave(ctx, file: discord.Attachment, title):
   file_format = title.lower()
   if format == "txt":
     await file.save(fp=f"Lyrics/Title/{file_format}.txt")
-    await ctx.send(f"**{name}** is saved")
+    await ctx.respond(f"**{name}** is saved")
   else:
     await ctx.respond("The file you entered is not a text file", ephemeral=True)
 
@@ -923,7 +924,7 @@ async def lycolor(ctx, color: str, name):
   description='List of the available lyrics'
 )
 async def lylist(
-  ctx,
+  ctx: discord.ApplicationContext,
   type: discord.Option(
     choices=['Original','Romaji']
   )='Romaji',
@@ -942,11 +943,20 @@ async def lylist(
       format_beta.append(
         f"{i+1} • **{lyric}**"
       )
-  
-  embed = discord.Embed(title='Lyrics List', color = discord.Color.random())
-  for part in parts(format_beta, 25):
-    embed.add_field(name="", value="\n".join(part))
-  await ctx.respond(embed=embed, ephemeral=hidden)
+  page_list = []
+  for i,part in enumerate(parts(format_beta,25)):
+    embed = discord.Embed(title='Lyrics List', color = discord.Color.random())
+    page_list.append(embed)
+    
+    page_list[i].add_field(
+      name = f"Page {i+1}",
+      value= "\n".join(part)
+    )
+  paginator = pages.Paginator(
+    pages = page_list,
+    loop_pages = True
+  )
+  await paginator.respond(ctx.interaction, ephemeral=hidden)
 
 
 @lyrics.command(
@@ -1304,6 +1314,9 @@ Violet will use YouTube API to do you a favor~
 - pp     : Get a channel icon from video URL
 """
 
+youtube = violet.create_group(name='youtube')
+
+
 @violet.command()
 async def yt(ctx, option: str = None, link = None):
   try:
@@ -1435,7 +1448,12 @@ async def ytdl(ctx, version = None, link = None):
       writer.writerow(row)
 
   
-  theme = discord.Embed(title=title, url=link, description=f"[{author}]({channel_home})", color = discord.Color.blue())
+  theme = discord.Embed(
+    title=title,
+    url=link,
+    description=f"[{author}]({channel_home})",
+    color = discord.Color.blue()
+  )
   
   theme.add_field(name=f"In {version.capitalize()} Format", value = f"{bitrate} Bitrate")
   theme.add_field(name = resolution, value = f"**[DOWNLOAD]({short_url})**")
@@ -1550,15 +1568,13 @@ async def ytlist(ctx, action = None, attribute = None):
 
 
 
-@violet.command()
-async def thumb(ctx, source=None):
-  if source is None:
-    await ctx.send("Please enter the video URL")
+@youtube.command()
+async def thumb(ctx, source: str):
 
   try:
     url = ytAPI.Video(source)
   except IndexError:
-    await ctx.send("Can't find the source")
+    await ctx.respond("Can't find the source")
     return
 
   thumbnail_url = url.thumbnail()
@@ -1571,7 +1587,11 @@ async def thumb(ctx, source=None):
     f.write(file.content)
 
   with open(f"YouTube/Thumbnail/{format_title_x}.png", "rb") as thumbnail:
-    await ctx.send(f"Here's the thumbnail for\n{title}", file = discord.File(thumbnail))
+    await ctx.respond(
+      f"Here's the thumbnail for\n{title}",
+      file = discord.File(thumbnail)
+    )
+  os.remove(f"YouTube/Thumbnail/{format_title_x}.png")
 
 
 
@@ -2354,10 +2374,12 @@ async def deepbooru(
     hidden = False
 
   await ctx.respond("Violet is trying to think about stuff right now\nPlease wait a moment...", ephemeral=True)
-  
+
+  start = time.perf_counter()
   tags = Deepbooru(image)
   top_tag = next(iter(tags))
   _,*rest = tags.items()
+  end = time.perf_counter()
 
   display = discord.Embed(
     title=f"Top Tag 「{top_tag}」",
@@ -2372,8 +2394,14 @@ async def deepbooru(
       )
     
   display.set_image(url=image)
-  display.set_footer(text="Using Deepbooru Model")
+  display.set_footer(
+    text=f"Time elapsed: {str(end-start)[:4]} seconds")
   display.set_thumbnail(url=bot_info.image_url)
+  display.set_author(
+    name = "DeepDanbooru",
+    icon_url = bot_info.image_url,
+    url = "https://github.com/KichangKim/DeepDanbooru"
+  )
   await ctx.respond(embed=display, ephemeral=hidden)
 
 
