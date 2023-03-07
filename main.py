@@ -13,6 +13,7 @@ Modules Collection
 """
 import discord
 from discord.ext import commands, pages
+from discord.ui import Button, View
 import os
 from ratelimiter import RateLimiter
 from sympy import *
@@ -56,7 +57,11 @@ Moshi moshi, discord-san?
 
 intents = discord.Intents.all()
 
-violet = commands.Bot(command_prefix='!', intents=intents,owner_ID = owner)
+violet = commands.Bot(
+  command_prefix='!',
+  intents=intents,
+  owner_ID = owner
+)
 
 command_limiter = RateLimiter(max_calls=1, period=1)
 
@@ -231,8 +236,12 @@ async def statistics(ctx):
   data.add_field(name='Status Counts',value= f"**Listening**: {type['music']}\n**Playing**: {type['game']}\n**Watching**: {type['movie']}")
   data.set_thumbnail(url=bot_info.image_url)
   
-  with open("Violet/Chart.jpg", "rb") as f:
-    await ctx.respond(embed=data,file=discord.File(f))
+  file = discord.File(
+    "Violet/Chart.jpg",
+    filename = "chart.png"
+  )
+  data.set_image(url="attachment://chart.png")
+  await ctx.respond(embed=data,file=file)
   os.remove("Violet/Chart.jpg")
 
 
@@ -1391,13 +1400,8 @@ async def yt(ctx, option: str = None, link = None):
 
 
 
-@violet.command()
-async def ytdl(ctx, version = None, link = None):
-  try:
-    version = version.lower()
-  except:
-    await ctx.send(f"Please enter the format, {ctx.author.mention}-san")
-    return
+@youtube.command(name='download')
+async def ytdl(ctx, link):
 
   try:
     yt = YouTube(link)
@@ -1406,43 +1410,37 @@ async def ytdl(ctx, version = None, link = None):
     
     thumbnail_url = ytAPI.Video(link).thumbnail()
     channel_icon = ytAPI.Channel(channel_id).info()
-
-    progress = await ctx.send("少々お待ちください")
-    for i in range(1,5):
-      dots = "．" * i
-      await progress.edit(content=f"少々お待ちください{dots}")
-      await asyncio.sleep(1)
-    
-    title = yt.title
-    author = yt.author
-    video = yt.streams.get_highest_resolution()
-    audio = yt.streams.get_audio_only()
   except:
-    msg = await ctx.send("Cannot find the URL content")
-    await asyncio.sleep(30)
-    await msg.delete()
+    await ctx.respond("Cannot find the URL content", ephemeral=True)
     return
-
-  if version is not None and version == 'video' and link is not None:
-    url = video.url
-    bitrate = video.abr
-    resolution = f"{video.resolution} Resolution"
-  elif version is not None and version == 'audio' and link is not None:
-    url = audio.url
-    bitrate = audio.abr
-    resolution = ""
-  else:
-    await progress.delete()
-    await asyncio.sleep(1)
-    await ctx.send(f"Please enter the right format, {ctx.author.mention}-san")
-    return
+  
+  await ctx.respond("少々お待ちください", ephemeral=True)
     
-  response = requests.get(f"https://tinyurl.com/api-create.php?url={url}")
-  short_url = str(response.text)
+    
+  title = yt.title
+  author = yt.author
+  video = yt.streams.get_highest_resolution()
+  audio = yt.streams.get_audio_only()
+  
+  video_url = video.url
+  video_bitrate = video.abr
+  resolution = f"{video.resolution} Resolution"
+  
+  audio_url = audio.url
+  audio_bitrate = audio.abr
+
+  def tinyurl(shorten):
+    tiny_url = "https://tinyurl.com/api-create.php"
+    response = str(requests.get(
+      tiny_url,
+      params= {'url': shorten}
+    ).text)
+    return response
+    
   
   with open("YouTube/Database.csv", "a", newline="") as dir:
     writer = csv.writer(dir)
-    writer.writerow([version,title,link,short_url])
+    writer.writerow([title,link,audio_url,video_url])
 
   rows_data = []
   with open("YouTube/Database.csv", "r") as data:
@@ -1454,7 +1452,7 @@ async def ytdl(ctx, version = None, link = None):
 
   with open("YouTube/Database.csv", "w", newline='') as updated_data:
     writer = csv.writer(updated_data)
-    writer.writerow(["FORMAT","TITLE","YOUTUBE","URL"])
+    writer.writerow(["TITLE","YOUTUBE","URL", "AUDIO", "VIDEO"])
     for row in sorted_data:
       writer.writerow(row)
 
@@ -1463,26 +1461,38 @@ async def ytdl(ctx, version = None, link = None):
     title=title,
     url=link,
     description=f"[{author}]({channel_home})",
-    color = discord.Color.blue()
+    color = discord.Color.red()
   )
   
-  theme.add_field(name=f"In {version.capitalize()} Format", value = f"{bitrate} Bitrate")
-  theme.add_field(name = resolution, value = f"**[DOWNLOAD]({short_url})**")
-  
+  theme.add_field(
+    name="Video",
+    value = f"Resolution: {resolution}\nBitrate: {video_bitrate}"
+  )
+  theme.add_field(
+    name = "Audio",
+    value = f"Bitrate: {audio_bitrate}"
+  )
   theme.set_thumbnail(url = channel_icon)
   theme.set_image(url = thumbnail_url)
   theme.set_footer(text = author, icon_url = channel_icon)
-    
-  async for command in ctx.history(limit=2):
-    if command.author == ctx.author:
-      await command.delete()
-      break
-  await asyncio.sleep(1)
-  await progress.delete()
-  await asyncio.sleep(1)
-  contents = await ctx.send(f"{ctx.author.mention}, Here you go", embed=theme)
-  await asyncio.sleep(300)
-  await contents.delete()
+  button_video = Button(
+    label="Video",
+    style = discord.ButtonStyle.red,
+    url = tinyurl(video_url)
+  )
+  button_audio = Button(
+    label="Audio",
+    style = discord.ButtonStyle.primary,
+    url = tinyurl(audio_url)
+  )
+  view = View()
+  view.add_item(button_video)
+  view.add_item(button_audio)
+  await ctx.respond(
+    f"{ctx.author.mention}, Here you go",
+    embed=theme,
+    view=view
+  )
 
 
 
@@ -1985,7 +1995,88 @@ async def danbooru(
   )
   await paginator.respond(ctx.interaction, ephemeral=True)
 
+
+class DanbooruView(View):
+  def __init__(self, tags, value):
+    super().__init__()
+
+    self.tags = tags
+    self.value = value
+
+  @discord.ui.button(
+    label="Roll Your Waifu",
+    style=discord.ButtonStyle.primary,
+    emoji="<:lukaara:861021131024498698>"
+  )
+  async def roll(
+    self,
+    button,
+    interaction
+  ):
+    start = time.perf_counter()
+    self.value = Danbooru.get_post(self.tags, 1)[0]
+    end = time.perf_counter()
+
+    embed = self.create_embed(start, end)
+    await interaction.response.edit_message(
+      embed = embed,
+      view = self
+    )
+
     
+  def create_embed(self, start, end):
+    def tagf(tag):
+      tag = tag.replace(" ",", ").replace("_"," ").title()
+      return tag
+
+    embed = discord.Embed(
+      title = f"Roll for {self.value['tag_string_artist']}"
+    )
+    try:
+      embed.set_image(
+      url = self.value['file_url']
+    )
+    except KeyError:
+      pass
+    embed.add_field(
+      name = "Characters",
+      value = tagf(self.value['tag_string_character'])
+    )
+    embed.add_field(
+      name = "Series",
+      value = tagf(self.value['tag_string_copyright'])
+    )
+    embed.add_field(
+      name = f"Tags[{len(self.value['tag_string_general'].split(' '))}]",
+      value = tagf(self.value['tag_string_general'])
+    )
+    embed.set_author(
+      name = self.value['tag_string_artist']
+    )
+    embed.set_footer(
+      text = f"Time elapsed: {end-start:.3f} seconds"
+    )
+    return embed
+
+
+@anime.command(name='danbooru-random')
+async def db_random(
+  ctx,
+  tags: str
+):
+  start = time.perf_counter()
+  value = Danbooru.get_post(tags, 1)[0]
+  end = time.perf_counter()
+  view = DanbooruView(tags = tags, value = value)
+  embed = view.create_embed(start, end)
+  await ctx.respond(
+    embed = embed,
+    ephemeral = True,
+    view = view
+  )
+
+
+
 
 
 """

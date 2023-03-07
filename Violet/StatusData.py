@@ -48,7 +48,7 @@ def StatusData():
     text.set_color("white")
     
   plt.title('Status Chart', fontsize=25, color = 'white')
-  fig.set_facecolor('#363940')
+  fig.set_facecolor('#2f3136')
 
   plt.tight_layout()
   plt.savefig('Violet/Chart.jpg')
