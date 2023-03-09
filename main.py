@@ -41,7 +41,8 @@ from Violet.bot_info import owner
 from Memories import top
 from Website import Heart
 from YouTube import ytAPI
-from Discord import FileNames
+from Discord import FileNames, timestamp
+from MyAnimeList import ordinals
 from AnimeSeries import Kyoko, WaifuIm, Yandere, Danbooru
 from Lyrics import parts, lyrics_list
 from Database import Database
@@ -1762,6 +1763,8 @@ Otaku saves the world they say
 - quote : Get a random quote from anime
 """
 
+
+
 anime = violet.create_group(name='anime')
 
 @anime.command(name='myanimelist')
@@ -1893,23 +1896,13 @@ async def quote(
 
 
 
-@anime.command(name='yandere')
-async def yd(
-  ctx: discord.ApplicationContext,
-  tags: str,
-  limit: int=100,
-  hidden: bool=True
-):
-  from MyAnimeList import ordinals
-  
-  start = time.perf_counter()
-  try:
-    posts_raw = Yandere(tags).get_post(limit)
-  except TypeError:
-    ctx.respond("Violet can't find it, please enter it in yande.re tags format ;)", ephemeral=True)
-    return
-  end = time.perf_counter()
-  
+
+def tagf(tag):
+  tag = " ".join(tag)
+  tag = tag.replace(" ",", ").replace("_"," ").title()
+  return tag
+
+def yd_page(posts_raw, start, end, head):
   posts = []
   for i, post in enumerate(posts_raw):
     embed = discord.Embed(
@@ -1921,21 +1914,38 @@ async def yd(
       url=post['sample_url']
     )
     posts[i].add_field(
-      name = "Information",
-      value= f"ID: {post['id']}\nImage Size: {str(post['file_size']/1024/1024)[:4]} MB\nImage Dimensions: {post['width']}x{post['height']}"
-    )
-    posts[i].add_field(
       name="Tags",
-      value = post['tags'].replace(" ","\n").replace("_"," ").title()
+      value = tagf(post['tags'])
     )
     posts[i].set_footer(
-      text=f"Time elapsed: {str(end-start)[:4]} Seconds\n{ordinals(i+1)} Page"
+      text= f"ID: {post['id']}\n{post['width']}x{post['height']} | {post['file_size']/1024/1024:.2f} MB\nTime elapsed: {end-start:.3f} seconds\n{ordinals(i+1)} page"
     )
     posts[i].set_author(
-      name = "File Url",
+      name = head,
       icon_url = post['preview_url'],
       url = post['file_url']
     )
+  return posts
+
+
+
+  
+@anime.command(name='yandere')
+async def yd(
+  ctx: discord.ApplicationContext,
+  tags: str,
+  limit: int=100,
+  hidden: bool=True
+):
+  start = time.perf_counter()
+  try:
+    posts_raw = Yandere(False,tags,1000).get_post(limit)
+  except TypeError:
+    ctx.respond("Violet can't find it, please enter it in yande.re tags format ;)", ephemeral=True)
+    return
+  end = time.perf_counter()
+
+  posts = yd_page(posts_raw, start, end, "Original")
 
   paginator = pages.Paginator(
     pages = posts,
@@ -1943,6 +1953,206 @@ async def yd(
     show_indicator = False
   )
   await paginator.respond(ctx.interaction, ephemeral=hidden)
+
+
+@anime.command(name='yandere-popular')
+async def yd_pop(
+  ctx: discord.ApplicationContext,
+  period: discord.Option(
+    choices=[
+      "This Day", "This Week",
+      "This Month", "This Year"
+    ]
+  )
+):
+  if period == 'This Day':
+    category = "1d"
+  elif period == 'This Week':
+    category = "1w"
+  elif period == 'This Month':
+    category = "1m"
+  elif period == 'This Year':
+    category = "1y"
+
+  start = time.perf_counter()
+  posts = Yandere(True, category).get_raw()['data']
+  end = time.perf_counter()
+
+  page = yd_page(posts, start, end, f"Popular {period}")
+  paginator = pages.Paginator(
+    pages = page,
+    loop_pages = True,
+    show_indicator = False
+  )
+  await paginator.respond(ctx.interaction, ephemeral=True)
+
+
+class YandereView(View):
+  def __init__(self, tags, res):
+    super().__init__()
+
+    self.res = res
+    self.tags = tags
+
+
+  @discord.ui.button(
+    label = "Roll For Your Waifu",
+    style = discord.ButtonStyle.primary,
+    emoji = "<:liaangry:754892955457814668>"
+  )
+  async def roll(self, button, interaction):
+    start = time.perf_counter()
+    self.res = Yandere(False,self.tags,1).get_raw()
+    end = time.perf_counter()
+
+
+    embed = self.display(start, end)
+    await interaction.response.edit_message(
+      embed = embed,
+      view = self
+    )
+
+  @discord.ui.button(
+    label = "Save to Memories",
+    style = discord.ButtonStyle.green,
+    emoji = "<:liasmile:754893063314210866>"
+  )
+  async def save_link(self, button, interaction):
+    embed = self.memories_embed()
+    await interaction.response.send_message(
+      embed = embed,
+      ephemeral = True
+    )
+
+  
+  def memories_embed(self):
+    info = self.res['posts'][0]
+    chara = [k for k,v in self.res['tags'].items() if v == 'character']
+
+    try:
+      chara_format = tagf(chara)
+      Database("Memories/Violet's Memories", "Yandere").add_data(
+        info['file_url'],
+        chara_format
+      )
+      if len(chara_format) > 256:
+        characters = tagf(chara[:4])
+      else:
+        characters = chara_format
+
+    
+    
+      embed = discord.Embed(
+        title = characters,
+        url = info['file_url']
+      )
+      embed.set_author(
+        name = "Saved to Memories"
+      )
+      embed.set_thumbnail(
+        url = info['preview_url']
+      )
+      embed.set_footer(
+        text = f"Today at {timestamp()} UTC"
+      )
+      return embed
+    except sqlite3.IntegrityError:
+      chara_format = f"{tagf(chara)} is already in Violet's heart"
+      embed = discord.Embed(
+        title = chara_format
+      )
+      return embed
+    
+  def display(self, start, end):
+    post = self.res['posts'][0]
+
+    chara = []
+    series = []
+    general = []
+    artist = []
+    for k,v in self.res['tags'].items():
+      if v == 'character':
+        chara.append(k)
+      elif v == 'copyright':
+        series.append(k)
+      elif v == 'general':
+        general.append(k)
+      elif v == 'artist':
+        artist.append(k)
+
+    if len(tagf(chara)) > 256:
+      character = tagf(chara[:4])
+    else:
+      character = tagf(chara)
+
+    embed = discord.Embed(
+      title = character,
+      description=f"By {tagf(artist)}",
+      color = bot_info.color  
+    )
+    embed.add_field(
+      name="Series",
+      value = tagf(series)
+    )
+    embed.add_field(
+      name = f"Tags[{len(general)}]",
+      value = tagf(general)
+    )
+    embed.set_author(
+      name = "Original",
+      url = post['file_url'],
+      icon_url = post['preview_url']
+    )
+    embed.set_footer(
+      text = f"ID: {post['id']}\n{post['width']}x{post['height']} | {post['file_size']/1024/1024:.2f} MB\nTime elapsed: {end-start:.3f} seconds"
+    )
+    embed.set_image(url=post['sample_url'])
+    return embed
+
+  
+    
+    
+@anime.command(name='yandere-random')
+async def yd_random(
+  ctx,
+  tags: str,
+  rating: discord.Option(
+    choices=[
+      'Safe', 'Questionable','Explicit'
+    ]
+  )=None
+):
+  search = f"Rating: {rating}\n{tags}"
+  tags = f"order:random {tags.strip()}"
+  
+  if rating == 'Safe':
+    tags = f"{tags} rating:s"
+  elif rating == 'Questionable':
+    tags = f"{tags} rating:q"
+  elif rating == 'Explicit':
+    tags = f"{tags} rating:e"
+    
+  start = time.perf_counter()
+  res = Yandere(False, tags, 1).get_raw()
+  end = time.perf_counter()
+  
+  try:
+    view = YandereView(tags, res)
+    embed = view.display(start, end)
+  except IndexError:
+    await ctx.respond(f"Violet can't find\n{search}\nPlease enter the right yande.re tags format", ephemeral=True)
+    return
+    
+  await ctx.respond(
+    embed = embed,
+    ephemeral = True,
+    view = view
+  )
+  
+  
+  
+
+
 
 
 @anime.command(name='danbooru')
@@ -2025,10 +2235,6 @@ class DanbooruView(View):
 
     
   def create_embed(self, start, end):
-    def tagf(tag):
-      tag = tag.replace(" ",", ").replace("_"," ").title()
-      return tag
-
     embed = discord.Embed(
       title = f"Roll for {self.value['tag_string_artist']}"
     )
@@ -2342,14 +2548,10 @@ async def embrace(ctx, url, name):
   try:
     Database("Memories/Violet's Memories", table).add_data(url, characters)
   except:
-    msg = await ctx.send("That post is already in my heart")
-    await asyncio.sleep(30)
-    await msg.delete()
+    await ctx.respond("That post is already in my heart", ephemeral=True)
     return
 
-  res = await ctx.respond(f"Violet will remember {characters} from now on for your sake")
-  await asyncio.sleep(30)
-  await res.delete()
+  await ctx.respond(f"Violet will remember {characters} from now on for your sake", ephemeral=True)
 
 
 
