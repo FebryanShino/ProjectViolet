@@ -40,12 +40,19 @@ class AppCommands(commands.Cog):
       name= f"Roles[{len(member.roles[1:])}]",
       value= roles
     )
-    profile.set_image(url = member.avatar)
-    profile.set_thumbnail(url = member.avatar)
-    profile.set_author(
-      name=self.bot.get_user(member.id),
-      icon_url= member.avatar
-    )
+
+    avatar = member.avatar
+    if avatar is not None:
+      profile.set_image(url = avatar)
+      profile.set_thumbnail(url = avatar) 
+      profile.set_author(
+        name=self.bot.get_user(member.id),
+        icon_url= avatar
+      )
+    else:
+      profile.set_author(
+        name=self.bot.get_user(member.id)
+      )
     profile.set_footer(
       text=f"ID: {member.id} | Today at {timestamp()} UTC")
     await ctx.respond(embed = profile)

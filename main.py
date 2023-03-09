@@ -628,8 +628,7 @@ It's FebryanS so you should expect that
 - pow   : Calculate power
 - calc  : Calculator
 - area  : Calculate the area of an 2D shapes
-- moles : Calculate moles or particles
-          amount of an atom/molecules
+
 """
 
 @violet.command(name='pow')
@@ -663,7 +662,13 @@ async def area(ctx, formula: str, a: float, b: float = None, c: float = None):
   elif formula == 'circle':
     await ctx.send(f"The area of a circle with\nRadius of **{a}**\nIs **{math.pi*(a**2)}**")
 
-
+"""
+AtomTheory Series
+-----------------------
+- particles
+- mass
+- volume
+"""
 
 from Calculation import AtomTheory
 atom = violet.create_group(name="atom")
@@ -1031,9 +1036,11 @@ It's FebryanS so you should expect that v2
 
 convert = violet.create_group(name="convert")
 
-@convert.command()
-async def decimal(ctx,
-  base: discord.Option(choices=['Binary','Octal','Hexadecimal']), number: str):
+@convert.command(name='decimal')
+async def decimal(
+  ctx,
+  base: discord.Option(choices=['Binary','Octal','Hexadecimal']),
+  number: str):
   base = base.lower()
   try:
     number = int(number)
@@ -1050,7 +1057,7 @@ async def decimal(ctx,
     await ctx.respond(f"**{base.capitalize()}** is not a valid base.")
 
 
-@convert.command()
+@convert.command(name='binary')
 async def binary(ctx, base: discord.Option(choices=['Octal','Decimal','Hexadecimal']), number: str):
     base = base.lower()
     try:
@@ -1069,7 +1076,7 @@ async def binary(ctx, base: discord.Option(choices=['Octal','Decimal','Hexadecim
         await ctx.respond(f"**{base.capitalize()}** is not a valid base.")
 
 
-@convert.command()
+@convert.command(name='hexadecimal')
 async def hexa(ctx, base: discord.Option(choices=['Binary','Octal','Decimal']), number: str):
     base = base.lower()
     try:
@@ -1088,7 +1095,7 @@ async def hexa(ctx, base: discord.Option(choices=['Binary','Octal','Decimal']), 
         await ctx.respond(f"**{base.capitalize()}** is not a valid base.")
 
 
-@convert.command()
+@convert.command(name='octal')
 async def octal(ctx, base: discord.Option(choices=['Binary','Decimal','Hexadecimal']), number: str):
     base = base.lower()
     try:
@@ -1170,37 +1177,66 @@ Want Violet to remember something for you?
 - data  : Private database for you ;)
 """
 
-@violet.command()
-async def url(ctx, act = None, key = None, value = None):
-  try:
-    act = act.lower()
-  except:
-    await ctx.send("You need to enter something....")
+repl_database = violet.create_group(name='replit')
+
+def repl_embed(desc, key, value):
+    embed = discord.Embed()
+    embed.add_field(
+      name = key,
+      value = value
+    )
+    embed.set_author(name=desc)
+    return embed
+
+
+@repl_database.command(name='save')
+async def repl_save(
+  ctx,
+  key: str,
+  value:str
+):
+  db[key] = value
+  embed = repl_embed("Saved",key,value)
+  await ctx.respond(embed=embed)
+
+
+
+@repl_database.command(name='get')
+async def repl_get(ctx, key):
+  value = db[key]
+  embed = repl_embed("Found",key,value)
+  await ctx.respond(embed = embed)
+
+
+  
+@repl_database.command(name='delete')
+async def repl_del(ctx, key):
+  violet_owner = violet.get_user(owner)
+  if ctx.author != violet_owner:
+    await ctx.respond(f"You need My Master {violet_owner.mention}'s permission to delete a key")
     return
+  del db[key]
+  embed = repl_embed("Deleted",key,"")
+  await ctx.respond(embed=embed)
 
-  if act == 'save' and key is not None and value is not None:
-    db[key] = value
-    await ctx.send(f"'{key}' is saved")
-  elif act == 'get':
-    value = db[key]
-    await ctx.send(f"URL for '{key}' is\n{value}")
-    
-  elif act == 'del':
-    if ctx.author != violet.get_user(owner):
-      await ctx.send("You need My Master's permission to delete a key")
-      return
-    del db[key]
-    await ctx.send(f"'{key}' is deleted")
-    
-  elif act == 'list':
-    keys = sorted(list(db.keys()))
-    keys_list = "\n".join(["• " + i for i in keys])
-    embed = discord.Embed(title="Key Database", color = discord.Color.red())
-    embed.add_field(name="", value = keys_list)
-    await ctx.send(embed=embed)
-  else:
-      await ctx.send(f"{act} is not a valid input")
 
+  
+@repl_database.command(name='list')
+async def repl_list(ctx):
+  keys = sorted(list(db.keys()))
+  keys_list = ["• " + i for i in keys]
+  embed = discord.Embed(
+    title="Key Database",
+    color = discord.Color.red()
+  )
+  for part in parts(keys_list, 25):
+    embed.add_field(
+      name="",
+      value = "\n".join(part)
+    )
+  embed.set_footer(text="Dame dane, dame yo, dame nano yo")
+  await ctx.respond(embed=embed)
+  
 
 
 @violet.command()
@@ -1590,7 +1626,7 @@ async def ytlist(ctx, action = None, attribute = None):
 
 
 
-@youtube.command()
+@youtube.command(name='thumbnail')
 async def thumb(ctx, source: str):
 
   try:
@@ -1862,22 +1898,52 @@ async def mal(
 
 
 
+class WaifuView(View):
+  def __init__(self, tags, nsfw, res):
+    super().__init__()
+
+    self.tags = tags
+    self.nsfw = nsfw
+    self.res = res
+
+  @discord.ui.button(
+    label = "Roll Your Waifu",
+    style = discord.ButtonStyle.red,
+    emoji = "<:lukaara:861021131024498698>"
+  )
+  async def roll(self, button, interaction):
+    self.res = WaifuIm("search").waifu(self.tags,self.nsfw)
+    embed = self.display()
+    await interaction.response.edit_message(
+      embed = embed,
+      view = self
+    )
+
+  def display(self):
+    color = int(self.res['color'][1:], 16)
+    embed = discord.Embed(
+      title = "Here's Your Waifu",
+      color = color
+    )
+    embed.set_image(url=self.res['url'])
+    embed.set_author(
+      name = "Source",
+      url = self.res['url']
+    )
+    return embed
+
 @anime.command(name='waifu')
 async def waifu(ctx, tags, nsfw:bool=False):
   tags = list(tags.split(" "))
   wf = WaifuIm("search").waifu(tags,nsfw)
 
-  color = int(wf['color'][1:], 16)
-  embed = discord.Embed(
-          title = "Your Waifu",
-          url = wf['source'],
-          color = color)
-  embed.set_image(url = wf['url'])
-  await ctx.respond(embed=embed)
+  view = WaifuView(tags, nsfw, wf)
+  embed = view.display()
+  await ctx.respond(embed=embed, view=view)
 
 
   
-@anime.command()
+@anime.command(name='quote')
 async def quote(
   ctx,
   language: discord.Option(
@@ -1963,7 +2029,8 @@ async def yd_pop(
       "This Day", "This Week",
       "This Month", "This Year"
     ]
-  )
+  ),
+  hidden: bool=True
 ):
   if period == 'This Day':
     category = "1d"
@@ -1984,7 +2051,7 @@ async def yd_pop(
     loop_pages = True,
     show_indicator = False
   )
-  await paginator.respond(ctx.interaction, ephemeral=True)
+  await paginator.respond(ctx.interaction, ephemeral=hidden)
 
 
 class YandereView(View):
@@ -2039,9 +2106,7 @@ class YandereView(View):
         characters = tagf(chara[:4])
       else:
         characters = chara_format
-
-    
-    
+   
       embed = discord.Embed(
         title = characters,
         url = info['file_url']
@@ -2120,7 +2185,8 @@ async def yd_random(
     choices=[
       'Safe', 'Questionable','Explicit'
     ]
-  )=None
+  )=None,
+  hidden: bool=True
 ):
   search = f"Rating: {rating}\n{tags}"
   tags = f"order:random {tags.strip()}"
@@ -2145,7 +2211,7 @@ async def yd_random(
     
   await ctx.respond(
     embed = embed,
-    ephemeral = True,
+    ephemeral = hidden,
     view = view
   )
   
@@ -2268,7 +2334,8 @@ class DanbooruView(View):
 @anime.command(name='danbooru-random')
 async def db_random(
   ctx,
-  tags: str
+  tags: str,
+  hidden: bool=True
 ):
   start = time.perf_counter()
   value = Danbooru.get_post(tags, 1)[0]
@@ -2277,7 +2344,7 @@ async def db_random(
   embed = view.create_embed(start, end)
   await ctx.respond(
     embed = embed,
-    ephemeral = True,
+    ephemeral = hidden,
     view = view
   )
 
