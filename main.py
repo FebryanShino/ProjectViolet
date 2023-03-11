@@ -2083,6 +2083,14 @@ async def yd_pop(
 
 
 class YandereView(View):
+
+  """
+  An object that subclassed the
+  discord.ui.View object
+  It's used to control every interaction
+  on yandere-random command
+  """
+  
   def __init__(
     self, ctx, tags, res,
     timeout, hidden
@@ -2096,7 +2104,12 @@ class YandereView(View):
     self.tags = tags
     self.counter = 1
 
-
+  """
+  All The Buttons That Are Available
+  - Roll
+  - Embrace
+  - The World
+  """  
   @discord.ui.button(
     label = "Roll",
     style = discord.ButtonStyle.primary,
@@ -2122,14 +2135,22 @@ class YandereView(View):
     )
 
   @discord.ui.button(
-    label = "Save to Memories",
+    label = "Embrace",
     style = discord.ButtonStyle.green,
     custom_id = "Save",
     emoji = "<:liaangry:754892955457814668>"
   )
   async def save_link(self, button, interaction):
+    owner = violet.get_user(bot_info.owner)
+    if interaction.user == owner:
+      await interaction.response.send_message(
+        f"Sssh...\nThis feature is only for Violet and Her Creator\nYou have no permission to use this",
+        ephemeral=True
+      )
+      return
+      
     button.disabled = True
-    button.label = "Saved"
+    button.label = "Embraced"
     button.style = discord.ButtonStyle.red
     button.emoji = "<:liasmile:754893063314210866>"
     embed = self.memories_embed()
@@ -2143,46 +2164,72 @@ class YandereView(View):
     )
     
   @discord.ui.button(
-    label = "Stop The Interaction",
+    label = "The World",
     style = discord.ButtonStyle.red
   )
   async def stop_interaction(
     self, button, interaction
   ):
-    embed = self.timeout_embed()
+    embed = self.timeout_embed(
+      "Interaction Stopped",
+      "this message in 30"
+    )
     self.clear_items()
     await interaction.response.edit_message(
       embed = embed,
       view = self,
-      delete_after = 60
+      delete_after = 30
     )
     self.stop()
     
 
-
-
+  """
+  All the modified methods from
+  discord.ui.View class
+  - Interaction Check
+  - On Timeout
+  """
   async def interaction_check(self, interaction):
     if interaction.user == self.ctx.author:
       return True
       
     else:
-      await interaction.response.send_message("You aren't supposed to do that", ephemeral=True)
+      await interaction.response.send_message(
+        "You have no right to do that",
+        ephemeral=True
+      )
       return False
 
   
   async def on_timeout(self):
-    embed = self.timeout_embed()
-    
+    embed = self.timeout_embed(
+      "Timeout!",
+      "interaction in 60"
+    )
     await self.ctx.respond(
       embed = embed,
       ephemeral = self.hidden,
       delete_after = 30
     )
 
-  def timeout_embed(self):
+  """
+  All The Utility Functions
+  Used On YandereView
+
+  Embeds
+  - Timeout Embed: For timeout and the world
+  - Memories Embed: For embrace
+  - Display: The core embed to display the               interaction
+
+  Other
+  - Rate: It's main purpose to format the
+          rating of a post
+  """
+  def timeout_embed(self, title, action):
     embed = discord.Embed(
-      title = "Timeout!",
-      description = "Violet will delete this interaction in 60 seconds\nFeel free to comeback later~"
+      title = title,
+      color = bot_info.color,
+      description = f"Violet will delete this {action} seconds\nFeel free to comeback later~"
     )
     embed.set_author(
       name = violet.user.name,
@@ -2210,6 +2257,7 @@ class YandereView(View):
    
       embed = discord.Embed(
         title = characters,
+        color = bot_info.color,
         url = info['file_url']
       )
       embed.set_author(
@@ -2228,11 +2276,13 @@ class YandereView(View):
         title = chara_format
       )
       return embed
-    
+
+  
   def display(self, start, end):
     post = self.res['posts'][0]
     rating = self.rate(post['rating'])
     score = f"Score: {post['score']}"
+    file = post['file_size']/1024/1024
     count = f"{ordinals(self.counter)} Roll"
 
     chara = []
@@ -2273,11 +2323,12 @@ class YandereView(View):
       icon_url = post['preview_url']
     )
     embed.set_footer(
-      text = f"ID: {post['id']} | Rating: {rating}\n{post['width']}x{post['height']} | {post['file_size']/1024/1024:.2f} MB\n{count} | Time elapsed: {end-start:.3f} seconds"
+      text = f"ID: {post['id']} | Rating: {rating}\n{post['width']}x{post['height']} | {file:.2f} MB\n{count} | Time elapsed: {end-start:.3f} seconds"
     )
     embed.set_image(url=post['sample_url'])
     return embed
 
+  
   def rate(self, type):
     if type == 's':
       type = "Safe"
