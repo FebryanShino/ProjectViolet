@@ -1539,13 +1539,14 @@ async def ytdl(ctx, link):
   view.add_item(button_audio)
   await ctx.respond(
     f"{ctx.author.mention}, Here you go",
-    embed=theme,
-    view=view
+    embed = theme,
+    view = view,
+    delete_after = 300
   )
 
 
 
-@youtube.command(name='list')
+@youtube.command(name='download-list')
 async def ytlist(
   ctx,
   action: discord.Option(
@@ -2076,19 +2077,30 @@ async def yd_pop(
 
 
 class YandereView(View):
-  def __init__(self, tags, res):
+  def __init__(
+    self, ctx, tags, res,
+    timeout, hidden
+  ):
     super().__init__()
 
+    self.timeout = timeout
+    self.hidden = hidden
+    self.ctx = ctx
     self.res = res
     self.tags = tags
 
 
   @discord.ui.button(
-    label = "Roll Your Waifu",
+    label = "Roll",
     style = discord.ButtonStyle.primary,
     emoji = "<:liaangry:754892955457814668>"
   )
   async def roll(self, button, interaction):
+    save_button = [i for i in self.children if i.custom_id == 'Save'][0]
+    save_button.label = "Save to Memories"
+    save_button.disabled = False
+    save_button.style = discord.ButtonStyle.green
+   
     start = time.perf_counter()
     self.res = Yandere(False,self.tags,1).get_raw()
     end = time.perf_counter()
@@ -2102,15 +2114,39 @@ class YandereView(View):
   @discord.ui.button(
     label = "Save to Memories",
     style = discord.ButtonStyle.green,
+    custom_id = "Save",
     emoji = "<:liasmile:754893063314210866>"
   )
   async def save_link(self, button, interaction):
+    button.disabled = True
+    button.label = "Saved"
+    button.style = discord.ButtonStyle.red
     embed = self.memories_embed()
-    await interaction.response.send_message(
+    await interaction.response.edit_message(
+      view = self
+    )
+    await interaction.followup.send(
       embed = embed,
-      ephemeral = True
+      ephemeral = True,
+      delete_after = 5
     )
 
+  async def on_timeout(self):
+    embed = discord.Embed(
+      title = "Timeout!",
+      description = "Violet will delete this interaction in 5 minutes\nFeel free to comeback later~"
+    )
+    embed.set_author(
+      name = violet.user.name,
+      icon_url = bot_info.image_url
+    )
+    embed.set_footer(text=f"Timeout: {self.timeout} seconds")
+    embed.set_image(url=bot_info.image_url2)
+    await self.ctx.respond(
+      embed = embed,
+      ephemeral = self.hidden,
+      delete_after = 30
+    )
   
   def memories_embed(self):
     info = self.res['posts'][0]
@@ -2206,6 +2242,11 @@ async def yd_random(
       'Safe', 'Questionable','Explicit'
     ]
   )=None,
+  timeout: discord.Option(
+    choices=[
+      f"{i+1} Minutes" for i in range(5)
+    ]
+  )="3 Minutes",
   hidden: bool=True
 ):
   search = f"Rating: {rating}\n{tags}"
@@ -2217,22 +2258,35 @@ async def yd_random(
     tags = f"{tags} rating:q"
   elif rating == 'Explicit':
     tags = f"{tags} rating:e"
+
+  def secs(minute_str):
+    seconds = int(minute_str[0])*60
+    return seconds
     
   start = time.perf_counter()
   res = Yandere(False, tags, 1).get_raw()
   end = time.perf_counter()
   
   try:
-    view = YandereView(tags, res)
+    view = YandereView(
+      ctx,
+      tags = tags,
+      res = res,
+      timeout = secs(timeout),
+      hidden = hidden
+    )
     embed = view.display(start, end)
   except IndexError:
     await ctx.respond(f"Violet can't find\n{search}\nPlease enter the right yande.re tags format", ephemeral=True)
     return
-    
+
+  delete = secs(timeout) + 300
+  print(type(delete))
   await ctx.respond(
     embed = embed,
     ephemeral = hidden,
-    view = view
+    view = view,
+    delete_after = delete
   )
   
   
@@ -3004,7 +3058,8 @@ async def ayaya(
 
       await ctx.respond(
         embed = embed,
-        file = discord.File(f)
+        file = discord.File(f),
+        delete_after = 300
       )
     os.remove("Ayaka.wav")
     
