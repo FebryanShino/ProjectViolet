@@ -1867,9 +1867,17 @@ async def mal(
     except AttributeError:
       pass
 
-    theme = discord.Embed(title=title_og ,url=url, description=f"**{type}**\n**Season**: {season}\n**Year**: {year}\n**Rank**: {ordinals(rank)}\n**Status**: {status}", color = color)
+    theme = discord.Embed(
+      title=title_og,
+      url=url,
+      color = color,
+      description=f"**{type}**\n**Season**: {season}\n**Year**: {year}\n**Rank**: {ordinals(rank)}\n**Status**: {status}"
+    )
 
-    theme.add_field(name="", value = f"**[{title_og} Trailer]({trailer})**")
+    theme.add_field(
+      name="",
+      value = f"**[{title_og} Trailer]({trailer})**"
+    )
     for i in synopsis:
       theme.add_field(name="", value=i)
     theme.set_image(url=image)
@@ -1912,10 +1920,6 @@ async def mal(
     embed.add_field(name="About", value=bio)
     embed.set_image(url=image)
     await ctx.respond(embed=embed)
-
-    
-  else:
-    await ctx.respond(f"Please enter the right category, {ctx.author.mention}-san")
 
 
 
@@ -1985,7 +1989,9 @@ async def quote(
 
 
 def tagf(tag):
-  tag = " ".join(tag)
+  if type(tag) == type(list()):
+    tag = " ".join(tag)
+    
   tag = tag.replace(" ",", ").replace("_"," ").title()
   return tag
 
@@ -2088,19 +2094,22 @@ class YandereView(View):
     self.ctx = ctx
     self.res = res
     self.tags = tags
+    self.counter = 1
 
 
   @discord.ui.button(
     label = "Roll",
     style = discord.ButtonStyle.primary,
-    emoji = "<:liaangry:754892955457814668>"
+    emoji = "<:liashock:754893144859869276>"
   )
-  async def roll(self, button, interaction):
+  async def roll(self, button, interaction): 
     save_button = [i for i in self.children if i.custom_id == 'Save'][0]
     save_button.label = "Save to Memories"
     save_button.disabled = False
+    save_button.emoji = "<:liaangry:754892955457814668>"
     save_button.style = discord.ButtonStyle.green
-   
+
+    self.counter += 1
     start = time.perf_counter()
     self.res = Yandere(False,self.tags,1).get_raw()
     end = time.perf_counter()
@@ -2108,19 +2117,21 @@ class YandereView(View):
     embed = self.display(start, end)
     await interaction.response.edit_message(
       embed = embed,
-      view = self
+      view = self,
+      delete_after = self.timeout + 60
     )
 
   @discord.ui.button(
     label = "Save to Memories",
     style = discord.ButtonStyle.green,
     custom_id = "Save",
-    emoji = "<:liasmile:754893063314210866>"
+    emoji = "<:liaangry:754892955457814668>"
   )
   async def save_link(self, button, interaction):
     button.disabled = True
     button.label = "Saved"
     button.style = discord.ButtonStyle.red
+    button.emoji = "<:liasmile:754893063314210866>"
     embed = self.memories_embed()
     await interaction.response.edit_message(
       view = self
@@ -2130,11 +2141,48 @@ class YandereView(View):
       ephemeral = True,
       delete_after = 5
     )
+    
+  @discord.ui.button(
+    label = "Stop The Interaction",
+    style = discord.ButtonStyle.red
+  )
+  async def stop_interaction(
+    self, button, interaction
+  ):
+    embed = self.timeout_embed()
+    self.clear_items()
+    await interaction.response.edit_message(
+      embed = embed,
+      view = self,
+      delete_after = 60
+    )
+    self.stop()
+    
 
+
+
+  async def interaction_check(self, interaction):
+    if interaction.user == self.ctx.author:
+      return True
+      
+    else:
+      await interaction.response.send_message("You aren't supposed to do that", ephemeral=True)
+      return False
+
+  
   async def on_timeout(self):
+    embed = self.timeout_embed()
+    
+    await self.ctx.respond(
+      embed = embed,
+      ephemeral = self.hidden,
+      delete_after = 30
+    )
+
+  def timeout_embed(self):
     embed = discord.Embed(
       title = "Timeout!",
-      description = "Violet will delete this interaction in 5 minutes\nFeel free to comeback later~"
+      description = "Violet will delete this interaction in 60 seconds\nFeel free to comeback later~"
     )
     embed.set_author(
       name = violet.user.name,
@@ -2142,12 +2190,9 @@ class YandereView(View):
     )
     embed.set_footer(text=f"Timeout: {self.timeout} seconds")
     embed.set_image(url=bot_info.image_url2)
-    await self.ctx.respond(
-      embed = embed,
-      ephemeral = self.hidden,
-      delete_after = 30
-    )
-  
+    return embed
+
+
   def memories_embed(self):
     info = self.res['posts'][0]
     chara = [k for k,v in self.res['tags'].items() if v == 'character']
@@ -2186,6 +2231,9 @@ class YandereView(View):
     
   def display(self, start, end):
     post = self.res['posts'][0]
+    rating = self.rate(post['rating'])
+    score = f"Score: {post['score']}"
+    count = f"{ordinals(self.counter)} Roll"
 
     chara = []
     series = []
@@ -2208,7 +2256,7 @@ class YandereView(View):
 
     embed = discord.Embed(
       title = character,
-      description=f"By {tagf(artist)}",
+      description = score,
       color = bot_info.color  
     )
     embed.add_field(
@@ -2220,15 +2268,24 @@ class YandereView(View):
       value = tagf(general)
     )
     embed.set_author(
-      name = "Original",
+      name = tagf(artist),
       url = post['file_url'],
       icon_url = post['preview_url']
     )
     embed.set_footer(
-      text = f"ID: {post['id']}\n{post['width']}x{post['height']} | {post['file_size']/1024/1024:.2f} MB\nTime elapsed: {end-start:.3f} seconds"
+      text = f"ID: {post['id']} | Rating: {rating}\n{post['width']}x{post['height']} | {post['file_size']/1024/1024:.2f} MB\n{count} | Time elapsed: {end-start:.3f} seconds"
     )
     embed.set_image(url=post['sample_url'])
     return embed
+
+  def rate(self, type):
+    if type == 's':
+      type = "Safe"
+    elif type == 'q':
+      type = "Questionable"
+    else:
+      type = "Explicit"
+    return type
 
   
     
@@ -2280,13 +2337,11 @@ async def yd_random(
     await ctx.respond(f"Violet can't find\n{search}\nPlease enter the right yande.re tags format", ephemeral=True)
     return
 
-  delete = secs(timeout) + 300
-  print(type(delete))
   await ctx.respond(
     embed = embed,
     ephemeral = hidden,
     view = view,
-    delete_after = delete
+    delete_after = secs(timeout) + 60
   )
   
   
