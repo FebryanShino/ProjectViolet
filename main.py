@@ -2117,7 +2117,7 @@ class YandereView(View):
   )
   async def roll(self, button, interaction): 
     save_button = [i for i in self.children if i.custom_id == 'Save'][0]
-    save_button.label = "Save to Memories"
+    save_button.label = "Embrace"
     save_button.disabled = False
     save_button.emoji = "<:liaangry:754892955457814668>"
     save_button.style = discord.ButtonStyle.green
@@ -2142,16 +2142,16 @@ class YandereView(View):
   )
   async def save_link(self, button, interaction):
     owner = violet.get_user(bot_info.owner)
-    if interaction.user == owner:
+    if interaction.user != owner:
       await interaction.response.send_message(
-        f"Sssh...\nThis feature is only for Violet and Her Creator\nYou have no permission to use this",
+        f"Ssshh...\nThis feature is only for Violet and Her Creator\nYou have no permission to use this",
         ephemeral=True
       )
       return
       
     button.disabled = True
     button.label = "Embraced"
-    button.style = discord.ButtonStyle.red
+    button.style = discord.ButtonStyle.primary
     button.emoji = "<:liasmile:754893063314210866>"
     embed = self.memories_embed()
     await interaction.response.edit_message(
