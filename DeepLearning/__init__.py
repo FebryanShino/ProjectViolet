@@ -7,7 +7,7 @@ REPLICATE_API = os.getenv("Replicate_API")
 
 
 
-def Deepbooru(url):
+def DeepDanbooru(url):
   file = requests.get(str(url))
   format = str(url).split(".")[-1]
   encoded_alpha = base64.b64encode(file.content).decode("utf-8")
@@ -32,6 +32,52 @@ def Deepbooru(url):
     accuracies.append(accuracy)
 
   return dict(zip(tags, accuracies))
+
+
+class Ayaka:
+  def __init__(
+    self,
+    language,
+    text,
+    noise=0.6,
+    noise_w=0.668,
+    length=1
+  ):
+    self.lang = language
+    self.text = text
+    self.noise = noise
+    self.noise_w = noise_w
+    self.length = length
+
+  def get_audio(self, path):
+    url = "https://febryans-mikamika.hf.space/run/predict"
+    headers = {'Authorization': f'Bearer {os.getenv("HF_API")}'}
+
+    data = {
+      'data': [
+        self.text,
+        self.lang,
+        self.noise,
+        self.noise_w,
+        self.length,
+        False
+      ]
+    }
+    res = requests.post(url, json=data, headers=headers).json()['data']
+
+    if res[0] == 'Success':
+      b64_str = res[1].split(',')[1]
+
+      file = base64.b64decode(b64_str)
+
+      with open(f"{path}.wav", "wb") as f:
+        f.write(file)
+      return res[0]
+      
+    else:
+      return res[0]
+    
+
 
 
 class StableDiffusion:

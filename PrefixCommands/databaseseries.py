@@ -1,5 +1,7 @@
 import discord
 from discord.ext import commands
+from replit import db
+from Violet import bot_info
 
 class DatabaseSeries(commands.Cog):
   def __init__(self, bot):
@@ -27,7 +29,7 @@ class DatabaseSeries(commands.Cog):
       await ctx.send(f"URL for '{key}' is\n{value}")
     
     elif act == 'del':
-      if ctx.author != violet.get_user(owner):
+      if ctx.author != self.bot.get_user(bot_info.owner):
         await ctx.send("You need My Master's permission to delete a key")
         return
       del db[key]

@@ -28,7 +28,7 @@ import csv
 from PIL import Image
 from replit import db
 from pytube import YouTube
-import pandas
+import pandas as pd
 import openpyxl
 
 """
@@ -37,7 +37,6 @@ Custom Modules
 Some resources that are exclusively tailored for Violet
 """
 from Violet import bot_info
-from Violet.bot_info import owner
 from Memories import top
 from Website import Heart
 from YouTube import ytAPI
@@ -46,7 +45,7 @@ from MyAnimeList import ordinals
 from AnimeSeries import Kyoko, WaifuIm, Yandere, Danbooru
 from Lyrics import parts, lyrics_list
 from Database import Database
-from DeepLearning import StableDiffusion, PastelMix, Deepbooru
+from DeepLearning import StableDiffusion, PastelMix, DeepDanbooru, Ayaka
 from OpenAI import OpenAI, OpenAIData, CropSquare
 
 
@@ -61,7 +60,7 @@ intents = discord.Intents.all()
 violet = commands.Bot(
   command_prefix='!',
   intents=intents,
-  owner_ID = owner
+  owner_ID = bot_info.owner
 )
 
 command_limiter = RateLimiter(max_calls=1, period=1)
@@ -86,25 +85,38 @@ async def change_status():
         activity = row[0]
         status = row[1]
         if activity == 'listening':
-          if status not in status_l:
-            status_l.add(status)
+           status_l.add(status)
         if activity == 'playing':
-          if status not in status_p:
-            status_p.add(status)
+          status_p.add(status)
         if activity == 'watching':
-          if status not in status_w:
-            status_w.add(status)
+          status_w.add(status)
             
     status_listening = random.choice(list(status_l))
     status_playing = random.choice(list(status_p))
     status_watching = random.choice(list(status_w))
 
+    act = discord.ActivityType
     try:
-      await violet.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name=status_listening))
+      await violet.change_presence(
+        activity = discord.Activity(
+          type = act.listening,
+          name = status_listening
+        )
+      )
       await asyncio.sleep(120)
-      await violet.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=status_playing))
+      await violet.change_presence(
+        activity = discord.Activity(
+          type = act.playing,
+          name = status_playing
+        )
+      )
       await asyncio.sleep(120)
-      await violet.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=status_watching))
+      await violet.change_presence(
+        activity = discord.Activity(
+          type = act.watching,
+          name = status_watching
+        )
+      )
       await asyncio.sleep(120)
     except discord.DiscordException as e:
       if e.status == 429:
@@ -125,7 +137,7 @@ async def on_ready():
 
     greeting_random = random.choice(greetings)
 
-    user = violet.get_user(owner)
+    user = violet.get_user(bot_info.owner)
     message = await user.send(greeting_random)
     await asyncio.sleep(30)
     await message.delete()
@@ -159,7 +171,7 @@ Wanna learn about Violet?
   description="Violet's Business Card"
 )
 async def botinfo(ctx):
-  author_avatar = violet.get_user(owner).avatar
+  author_avatar = violet.get_user(bot_info.owner).avatar
   
   info = discord.Embed(
     title = bot_info.bot_name,
@@ -1211,7 +1223,7 @@ async def repl_get(ctx, key):
   
 @repl_database.command(name='delete')
 async def repl_del(ctx, key):
-  violet_owner = violet.get_user(owner)
+  violet_owner = violet.get_user(bot_info.owner)
   if ctx.author != violet_owner:
     await ctx.respond(f"You need My Master {violet_owner.mention}'s permission to delete a key")
     return
@@ -1477,7 +1489,7 @@ async def ytdl(ctx, link):
   
   with open("YouTube/Database.csv", "a", newline="") as dir:
     writer = csv.writer(dir)
-    writer.writerow([title,link,audio_url,video_url])
+    writer.writerow([title,link])
 
   rows_data = []
   with open("YouTube/Database.csv", "r") as data:
@@ -1485,11 +1497,11 @@ async def ytdl(ctx, link):
     next(reader)
     for row in reader:
       rows_data.append(row)
-  sorted_data = sorted(rows_data, key=lambda row: (row[1].lower(), row[1]))
+  sorted_data = sorted(rows_data, key=lambda row: (row[0].lower(), row[0]))
 
   with open("YouTube/Database.csv", "w", newline='') as updated_data:
     writer = csv.writer(updated_data)
-    writer.writerow(["TITLE","YOUTUBE","URL", "AUDIO", "VIDEO"])
+    writer.writerow(["TITLE","YOUTUBE"])
     for row in sorted_data:
       writer.writerow(row)
 
@@ -1533,63 +1545,64 @@ async def ytdl(ctx, link):
 
 
 
-@violet.command()
-async def ytlist(ctx, action = None, attribute = None):
+@youtube.command(name='list')
+async def ytlist(
+  ctx,
+  action: discord.Option(
+    choices=['Download', 'Clean']
+  )=None,
+  format: discord.Option(
+    choices=['Excels','CSV']
+  )=None
+):
 
-  if action is not None and action.lower() in ['dl', 'download']:
-    if attribute is not None and attribute.lower() == 'excel':
-      file_original = pandas.read_csv('YouTube/Database.csv')
-      file_original.to_excel('YouTube/Database_Excel.xlsx', index = False)
+  if action == 'Download':
+    if format == 'Excels':
+      file_original = pd.read_csv('YouTube/Database.csv')
+      file_original.to_excel(
+        'YouTube/Database_Excel.xlsx',
+        index = False
+      )
       with open('YouTube/Database_Excel.xlsx', "rb") as file:
-        await ctx.send("Here's the YouTube Database in EXCELS file", file=discord.File(file))
+        await ctx.respond(
+          "Here's the YouTube Database in EXCELS file",
+          file=discord.File(file)
+        )
       os.remove('YouTube/Database_Excel.xlsx')
       
-    elif not attribute:
+    elif format == ['CSV']:
       with open("YouTube/Database.csv", "rb") as file:
-        await ctx.send("Here's the YouTube Database in CSV file", file = discord.File(file))
+        await ctx.respond("Here's the YouTube Database in CSV file", file = discord.File(file))
         
-    else:
-      await ctx.send(f"{attribute.upper()} file is not supported yet")
-
-  elif action is not None and action.lower() == 'clean':
-    if ctx.author != violet.get_user(owner):
-      await ctx.send("You need My Master's permission to clean up the database")
+  elif action == 'Clean':
+    if ctx.author != violet.get_user(bot_info.owner):
+      await ctx.respond(
+        "You need My Master's permission to clean up the database",
+        ephemeral=True
+      )
       return
       
     with open("YouTube/Database.csv", "w", newline='') as data:
       writer = csv.writer(data)
-      writer.writerow(["FORMAT","TITLE","YOUTUBE","URL"])
-    await ctx.send("Finished cleaning up YouTube Database")
+      writer.writerow(["TITLE","YOUTUBE"])
+    await ctx.respond("Finished cleaning up YouTube Database", ephemeral=True)
   
   else:
     row_list = []
     with open("YouTube/Database.csv", "r") as data:
       reader = csv.reader(data)
+      next(reader)
       for row in reader:
         row_list.append(row)
 
     yt_url_list = []
-    video_list = []
-    audio_list = []
-    title_video = set()
-    title_audio = set()
+    title_list = set()
     for row in row_list:
-      format = row[0]
-      title = row[1]
-      url = row[3]
-      yt_url = row[2]
-      if format == 'audio':
-        if title not in title_audio:
-          formatted = "[{}]({})".format(title, url)
-          audio_list.append(formatted)
-          title_audio.add(title)
-          yt_url_list.append(yt_url)
-      elif format == 'video':
-        if title not in title_video:
-          formatted = "[{}]({})".format(title, url)
-          video_list.append(formatted)
-          title_video.add(title)
-          yt_url_list.append(yt_url)
+      title = row[0]
+      yt_url = row[1]
+      formatted = "[{}]({})".format(title, yt_url)
+      title_list.add(formatted)
+      yt_url_list.append(yt_url)
           
     try:
       random_url = random.choice(yt_url_list)
@@ -1607,22 +1620,28 @@ async def ytlist(ctx, action = None, attribute = None):
       channel_icon = ""
 
       
-    video_format = ["• " + i for i in video_list]
-    audio_format = ["• " + i for i in audio_list]
-    print(video_format)
+    title_format = ["• " + i for i in title_list]
       
-    data_list = discord.Embed(title="YouTube Database", url= random_url, color=discord.Color.red())
-    data_list.add_field(name="Video", value="")
-    for i in parts(video_format, 10):
-      data_list.add_field(name='',value="\n".join(i))
-      
-    data_list.add_field(name="Audio", value='')
-    for i in parts(audio_format, 10):
-      data_list.add_field(name='',value="\n".join(i))
-    data_list.set_thumbnail(url=bot_info.image_url)
+    data_list = discord.Embed(
+      title = "YouTube Database",
+      color = discord.Color.red()
+    )
+    for i in parts(title_format, 10):
+      data_list.add_field(
+        name='',
+        value="\n".join(i)
+      )
+    data_list.set_author(
+      name=violet.user.name,
+      icon_url=bot_info.image_url,
+      url=random_url
+    )
     data_list.set_image(url = thumbnail)
-    data_list.set_footer(text=yt_title, icon_url=channel_icon)
-    await ctx.send(embed=data_list)
+    data_list.set_footer(
+      text=yt_title,
+      icon_url=channel_icon
+    )
+    await ctx.respond(embed=data_list)
 
 
 
@@ -1653,24 +1672,28 @@ async def thumb(ctx, source: str):
 
 
 
-@violet.command()
-async def pp(ctx, link = None):
+@youtube.command(name='channel-icon')
+async def pp(ctx, link: str):
   try:
     yt = YouTube(link)
     author = yt.author
     title = yt.title
     channel_id = yt.channel_id
   except:
-    await ctx.send("バカですね...")
+    await ctx.respond("バカですね...", ephemeral=True)
     return
   
   channel_icon = ytAPI.Channel(channel_id).info()
 
-  profile = discord.Embed(title=author, url=channel_icon, color = discord.Color.random())
+  profile = discord.Embed(
+    title=author,
+    url=channel_icon,
+    color = discord.Color.random()
+  )
   profile.set_image(url=channel_icon)
   profile.set_footer(text=title)
   
-  await ctx.send(embed=profile)
+  await ctx.respond(embed=profile)
 
 
 
@@ -1725,7 +1748,7 @@ async def excel(ctx, action = None, *content):
     else:
       filename = "_".join(content).replace(" ","_")
       
-    cursor = pandas.read_csv('Excels/excel_data.csv')
+    cursor = pd.read_csv('Excels/excel_data.csv')
     cursor.to_excel(f'Excels/{filename}.xlsx', index=False)
 
     with open(f'Excels/{filename}.xlsx', "rb") as file:
@@ -1760,8 +1783,7 @@ async def excel(ctx, action = None, *content):
 
 
 @violet.command()
-async def txt(ctx, action = None, *args):
-  
+async def txt(ctx, action = None, *args): 
   arg = " ".join(args).replace('#','.').split(".")
   result = "\n".join([x.strip() for x in arg])
 
@@ -1774,14 +1796,12 @@ async def txt(ctx, action = None, *args):
   
   if action.lower() == 'ly':
     data_place = "Lyrics/Title"
-
   else:
     data_place = "Database"
 
   with open(f"{data_place}/{filename}.txt", "w") as f:
     f.write(result)
 
-  
   with open(f"{data_place}/{filename}.txt","rb") as file:
     await ctx.send(f"{filename.replace('_',' ').title()} is saved in {data_place}", file=discord.File(file))
 
@@ -2054,6 +2074,7 @@ async def yd_pop(
   await paginator.respond(ctx.interaction, ephemeral=hidden)
 
 
+
 class YandereView(View):
   def __init__(self, tags, res):
     super().__init__()
@@ -2063,7 +2084,7 @@ class YandereView(View):
 
 
   @discord.ui.button(
-    label = "Roll For Your Waifu",
+    label = "Roll Your Waifu",
     style = discord.ButtonStyle.primary,
     emoji = "<:liaangry:754892955457814668>"
   )
@@ -2071,8 +2092,7 @@ class YandereView(View):
     start = time.perf_counter()
     self.res = Yandere(False,self.tags,1).get_raw()
     end = time.perf_counter()
-
-
+    
     embed = self.display(start, end)
     await interaction.response.edit_message(
       embed = embed,
@@ -2658,10 +2678,14 @@ async def remember(
   ctx,
   choice: discord.Option(choices=['Yandere','Danbooru']),
   search: str,
-  hidden: bool=True):
+  hidden: bool=True
+):
   from MyAnimeList import ordinals
   from Memories import Yandere
 
+  if len(search) > 256:
+    search = search[:256]
+    
   raw = Database("Memories/Violet's Memories", choice.lower()).get_like(search.split(" "))
   results = {key:value for key,value in sorted(raw.items(), key=lambda x: x[1])}
   total_post = len([value for key,value in results.items()])
@@ -2731,8 +2755,13 @@ async def forget(ctx, link):
 
 @memories.command(name='recount')
 @commands.is_owner()
-async def recount(ctx, choice: discord.Option(choices=['Yandere','Danbooru'])):
-
+async def recount(
+  ctx: discord.ApplicationContext,
+  choice: discord.Option(
+    choices=['Yandere','Danbooru']
+  ),
+  hidden: bool=True
+):
   all = Database("Memories/Violet's Memories", choice.lower()).list_data()
   data = []
   for url, chara in all.items():
@@ -2748,15 +2777,46 @@ async def recount(ctx, choice: discord.Option(choices=['Yandere','Danbooru'])):
     else:
       counts[i] = 1
 
-  top_chara = "\n".join(top(counts, 10))
+  top_chara = top(counts, top_n=False)
   await ctx.respond("Violet is trying to remember stuff right now\nPlease wait a moment...", ephemeral=True)
   from Memories import data_chart
   data_chart(choice,counts,(16,9))
 
-  embed = discord.Embed(title=choice, description=f"Total {len(data)} Posts in Violet's Memories")
-  embed.add_field(name="Top Characters", value=top_chara)
-  with open("Memories/Chart.png", "rb") as f:
-    await ctx.respond(file=discord.File(f),embed=embed, ephemeral = True)
+  file = discord.File(
+    "Memories/Chart.png",
+    filename="chart.png"
+  )
+  
+  page_list = []
+  for i,chara in enumerate(parts(top_chara, 10)):
+    embed = discord.Embed(
+      title=choice,
+      description=f"Total {len(data)} Posts in Violet's Memories"
+    )
+    page_list.append(embed)
+    
+    page_list[i].add_field(
+      name="Top Characters",
+      value= "\n".join(chara)
+    )
+    page_list[i].set_image(
+      url="attachment://chart.png"
+    )
+    
+
+  paginator = pages.Paginator(
+    pages = page_list,
+    show_indicator = False,
+    loop_pages = True
+  )
+  await ctx.respond(
+    file = file,
+    ephemeral = hidden
+  )
+  await paginator.respond(
+    ctx.interaction,
+    ephemeral = hidden,
+  )
   os.remove("Memories/Chart.png")
 
 
@@ -2839,33 +2899,37 @@ No description yet
 
 dl = violet.create_group(name="deeplearning")
 
-@dl.command(name = 'deepbooru')
+@dl.command(name = 'deepdanbooru')
 async def deepbooru(
   ctx,
   image: discord.Attachment,
   hidden:bool=False
 ):
-  if ctx.author != violet.get_user(owner):
+  if ctx.author != violet.get_user(bot_info.owner):
     hidden = False
 
   await ctx.respond("Violet is trying to think about stuff right now\nPlease wait a moment...", ephemeral=True)
 
   start = time.perf_counter()
-  tags = Deepbooru(image)
+  tags = DeepDanbooru(image)
   top_tag = next(iter(tags))
   _,*rest = tags.items()
   end = time.perf_counter()
 
+  def percentage(number):
+    result = "{0:.0%}".format(number)
+    return result
+    
   display = discord.Embed(
     title=f"「{top_tag}」",
-    description=f"{str(tags[top_tag])[:5]} Accuracy",
+    description=f"{percentage(tags[top_tag])} Accuracy",
     url=f"https://danbooru.donmai.us/posts?tags={top_tag.replace(' ','_').lower()}"
   )
 
   for tag, accuracy in dict(rest).items():
     display.add_field(
       name=f"• 「{tag}」",
-      value=f"{str(accuracy)[:5]} Accuracy"
+      value=f"{percentage(accuracy)} Accuracy"
       )
     
   display.set_image(url=image)
@@ -2880,6 +2944,74 @@ async def deepbooru(
   )
   await ctx.respond(embed=display, ephemeral=hidden)
 
+
+
+@dl.command(
+  name='ayaka',
+  description="Ayaka will say something as you wish"
+)
+@discord.option(
+  "text",
+  description="Japanese only (Hiragana, Katakana, Kanji)"
+)
+async def ayaya(
+  ctx,
+  text,
+  language: discord.Option(
+    choices=['Japanese','Chinese']
+  )='Japanese',
+  noise: float=0.6,
+  noise_width: float=0.668,
+  length: float=1
+):
+  await ctx.respond("少々お待ちください\n- Kamisato Ayaka", ephemeral=True)
+
+  def max_value(number, max):
+    if number > max:
+      number = max
+    elif number < 0.1:
+      number = 0.1
+    return number
+
+  start = time.perf_counter()
+  ayaka = Ayaka(
+    language = language,
+    text = text,
+    noise = max_value(noise, 1),
+    noise_w = max_value(noise_width, 1),
+    length = max_value(length, 2)
+  ).get_audio("Ayaka")
+  end = time.perf_counter()
+
+  if ayaka == 'Success':
+    with open("Ayaka.wav",'rb') as f:
+      embed = discord.Embed(
+        description = text,
+        color = 0xe4b2d4
+      )
+      embed.set_author(
+        name = "Kamisato Ayaka",
+        icon_url = os.getenv('ayaka_beach')
+      )
+      embed.set_thumbnail(
+        url = os.getenv('ayaka_portrait')
+      )
+      embed.set_image(
+        url = os.getenv('ayaka_landscape')
+      )
+      embed.set_footer(
+        text=f"Character length: {len(text)}\nTime elapsed: {end-start:.3f} seconds")
+
+      await ctx.respond(
+        embed = embed,
+        file = discord.File(f)
+      )
+    os.remove("Ayaka.wav")
+    
+  else:
+    await ctx.respond(ayaka, ephemeral=True)
+  
+  
 
 
 @dl.command(name='stablediffusion')

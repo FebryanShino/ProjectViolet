@@ -60,15 +60,22 @@ def data_chart(
 
 def top(
         data : dict,
-        top  : int
+        top  : int=None,
+        top_n=True
        ):
   """
   A function to get the n highest value
   from a dictionary and return it as a list
   """
-         
-  top_tags = heapq.nlargest(top,
-             data.items(),
-             key=lambda x: x[1])
+  if top_n is True:
+    top_tags = heapq.nlargest(top,
+               data.items(),
+              vkey=lambda x: x[1])
+  else:
+    top_tags = sorted(
+      data.items(),
+      key= lambda x: x[1], reverse=True
+    )
+    
   top_list = [f"• {ordinals(i+1)} Place\n「**{k}**」\nConsisting **{v} Posts**\n" for i,(k,v) in enumerate(top_tags)]
   return top_list
