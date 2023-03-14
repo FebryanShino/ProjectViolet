@@ -9,10 +9,18 @@ class iTunes:
   """
   
   def __init__(self, search):
-    self.search = requests.get(f'https://itunes.apple.com/search?term={search}&entity=song')
-    self.data = self._data()
+    url = f"https://itunes.apple.com/search"
+    params = {
+      'term': search,
+      'entity': 'song'
+    }
+    self.search = requests.get(
+      url,
+      params = params
+    )
+    self.data = self.track_info()
   
-  def _data(self):
+  def track_info(self):
     songs = self.search.json()
     song_data = songs['results']
     database = defaultdict(lambda: '')

@@ -511,6 +511,8 @@ Have fun with Violet :)
 - rate      : Let Violet rates your waifu
 """
 
+playground = violet.create_group(name='playground')
+
 @violet.command(name='whoareyou')
 async def whoareyou(ctx):
     await ctx.send("I'm you but better 😎")
@@ -630,6 +632,175 @@ async def rate(ctx, *waifu: str):
     await ctx.send(f'{disappointment}\n- {bot_info.bot_name}')
 
 
+class RuRoulette(View):
+  def __init__(self, number):
+    super().__init__()
+
+    self.number = number
+    self.turn = None
+
+  @discord.ui.button(
+    label = "Roll For Your Life",
+    style = discord.ButtonStyle.danger,
+    emoji = "🔫"
+  )
+  async def roll(self, button, interaction):
+    number = random.randint(1, 6)
+    if interaction.user == self.turn:
+      await interaction.response.send_message(
+        "It's not your turn",
+        ephemeral = True
+      )
+      return
+
+    self.turn = interaction.user
+
+    if number in self.number:
+      embed = self.death("You Died!")
+      self.clear_items()
+      await interaction.response.edit_message(
+        content = f"{interaction.user.mention}",
+        embed = embed,
+        view = self
+      )
+      self.stop()
+      return
+
+    embed = self.death("You're Safe")
+    await interaction.response.edit_message(
+      embed = embed,
+      view = self
+    )
+
+
+  def death(self, title):
+    embed = discord.Embed(
+      title = title
+    )
+    return embed
+
+
+
+@playground.command(name='russian-roulette')
+async def ru_roulette(ctx):
+  number_set = set()
+
+  while len(number_set) < 2:
+    number = random.randint(1, 6)
+    number_set.add(number)
+
+  view = RuRoulette(number_set)
+  embed = discord.Embed(
+    title = "Start!"
+  )
+  await ctx.respond(
+    embed = embed,
+    view = view
+  )
+
+
+
+class CoinFlipView(View):
+  def __init__(self, result):
+    super().__init__()
+
+    self.result = result
+
+  @discord.ui.button(
+    label = "Head",
+    style = discord.ButtonStyle.primary
+  )
+  async def choose_head(
+    self,
+    button,
+    interaction
+  ):
+    if self.result == "Head":
+      condition = "Won"
+    else:
+      condition= "Lost"
+
+
+    self.clear_items()
+    embed = self.end_screen(condition)
+    await interaction.response.edit_message(
+      embed = embed,
+      view = self,
+      delete_after = 30
+    )
+    self.stop()
+
+  @discord.ui.button(
+    label = "Tail",
+    style = discord.ButtonStyle.danger
+  )
+  async def choose_tail(
+    self,
+    button,
+    interaction
+  ):
+    if self.result == "Tail":
+      condition = "Won"
+    else:
+      condition= "Lost"
+
+
+    self.clear_items()
+    embed = self.end_screen(condition)
+    await interaction.response.edit_message(
+      embed = embed,
+      view = self,
+      delete_after = 30
+    )
+    self.stop()
+
+
+
+  def start_screen(self):
+    embed = discord.Embed(
+      title = "Start The Game!",
+      color = bot_info.color
+    )
+    embed.set_author(
+      name = "Coin Flip",
+      icon_url = bot_info.image_url
+    )
+    embed.set_image(url=bot_info.image_url2)
+    return embed
+
+  def end_screen(
+    self,
+    condition
+  ):
+    image = os.getenv("ayaka_landscape_2")
+    
+    embed = discord.Embed(
+      title = f"You {condition} The Game!"
+    )
+    embed.add_field(
+      name = f"The correct answer is {self.result}",
+      value = ""
+    )
+    embed.set_footer(
+      text = "Violet will delete this message in 30 seconds"
+    )
+    embed.set_image(url = image)
+    return embed
+
+
+
+
+@playground.command(name='coin-flip')
+async def coin_flip(ctx):
+  options = ["Head", "Tail"]
+  result = random.choice(options)
+
+  view = CoinFlipView(result)
+  embed = view.start_screen()
+  await ctx.respond(
+    embed = embed,
+    view = view
+  )
 
 
 """
@@ -1399,7 +1570,6 @@ async def yt(ctx, option: str = None, link = None):
     
   except:
     await ctx.send(f"Please enter the valid URL, {ctx.author.mention}-san")
-    return
 
   title = yt.title
   author = yt.author
@@ -1998,6 +2168,9 @@ def tagf(tag):
 def yd_page(posts_raw, start, end, head):
   posts = []
   for i, post in enumerate(posts_raw):
+    if "http" not in post['source']:
+      post['source'] = None
+      
     embed = discord.Embed(
       title = "Source",
       url = post['source']
@@ -2108,7 +2281,7 @@ class YandereView(View):
   All The Buttons That Are Available
   - Roll
   - Embrace
-  - The World
+  - Za Warudo
   """  
   @discord.ui.button(
     label = "Roll",
@@ -2144,7 +2317,7 @@ class YandereView(View):
     owner = violet.get_user(bot_info.owner)
     if interaction.user != owner:
       await interaction.response.send_message(
-        f"Ssshh...\nThis feature is only for Violet and Her Creator\nYou have no permission to use this",
+        "Ssshh...\nThis feature is only for Violet and Her Creator\nYou have no permission to use this",
         ephemeral=True
       )
       return
@@ -2164,7 +2337,7 @@ class YandereView(View):
     )
     
   @discord.ui.button(
-    label = "The World",
+    label = "Za Warudo",
     style = discord.ButtonStyle.red
   )
   async def stop_interaction(
@@ -2206,6 +2379,7 @@ class YandereView(View):
       "Timeout!",
       "interaction in 60"
     )
+    
     await self.ctx.respond(
       embed = embed,
       ephemeral = self.hidden,
@@ -3124,7 +3298,11 @@ async def ayaya(
   noise_width: float=0.668,
   length: float=1
 ):
-  await ctx.respond("少々お待ちください\n- Kamisato Ayaka", ephemeral=True)
+  await ctx.respond(
+    "少々お待ちください\n- Kamisato Ayaka",
+    ephemeral = True,
+    delete_after = 30
+  )
 
   def max_value(number, max):
     if number > max:
