@@ -3,7 +3,7 @@ import sqlite3
 class Database:
   """
   Violet's Main Database class
-  User for almost everything that saves data
+  Used for almost everything that saves data
   """
   
   def __init__(self,path,user_id):

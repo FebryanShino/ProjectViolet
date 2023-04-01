@@ -14,51 +14,12 @@ class MyAnimeList:
 
     def __init__(self, name):
       self.name = name
-      parameters = {'q': self.name}
-      anime = requests.get("https://api.jikan.moe/v4/anime?", params=parameters)
-      self.res = anime.json()['data'][0]
-    def titles(self, lang):
-      if lang == 'og':
-        title = self.res['title']
-      elif lang == 'jp':
-        title = self.res['title_japanese']
-      elif lang == 'en':
-        title = self.res['title_english']
-      return title
-        
-    def info(self):
-      season = self.res['season']
-      type = self.res['type']
-      year = self.res['year']
-      rank = self.res['rank']
-      status = self.res['status']
-      trailer = self.res['trailer']['url']
-      synopsis = self.res['synopsis'].split("\n\n")[:-1]
-      url = self.res['url']
-      image = self.res['images']['jpg']['large_image_url']
+      params = {'q': self.name}
+      anime = requests.get("https://api.jikan.moe/v4/anime?", params=params)
+      self.res = anime.json()['data']
 
-      if season == 'summer':
-        color = 0xf9d62e
-      elif season == 'spring':
-        color = 0xc6d7b9
-      elif season == 'fall':
-        color = 0xf05133
-      elif season == 'winter':
-        color = 0xe3e3ff
-      else:
-        color = 0x2e51a1
-      
-      return {'season': season,
-              'type': type,
-              'year': year,
-              'rank': rank,
-              'status': status,
-              'color': color,
-              'trailer': trailer,
-              'synopsis': synopsis,
-              'url': url,
-              'art': image
-             }
+    def anime_list(self):
+      return self.res
 
   
   class UserSearch:
@@ -117,7 +78,48 @@ class MyAnimeList:
 
 
 
+def titles(anime, lang):
+  if lang == 'og':
+    title = anime['title']
+  elif lang == 'jp':
+    title = anime['title_japanese']
+  elif lang == 'en':
+    title = anime['title_english']
+  return title
+        
+def information(anime):
+  season = anime['season']
+  type = anime['type']
+  year = anime['year']
+  rank = anime['rank']
+  status = anime['status']
+  trailer = anime['trailer']['url']
+  synopsis = anime['synopsis'].split("\n\n")[:-1]
+  url = anime['url']
+  image = anime['images']['jpg']['large_image_url']
 
+  if season == 'summer':
+    color = 0xf9d62e
+  elif season == 'spring':
+    color = 0xc6d7b9
+  elif season == 'fall':
+    color = 0xf05133
+  elif season == 'winter':
+    color = 0xe3e3ff
+  else:
+    color = 0x2e51a1
+      
+  return {'season': season,
+          'type': type,
+          'year': year,
+          'rank': rank,
+          'status': status,
+          'color': color,
+          'trailer': trailer,
+          'synopsis': synopsis,
+          'url': url,
+          'art': image
+          }
 
 
 

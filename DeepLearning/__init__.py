@@ -7,7 +7,8 @@ REPLICATE_API = os.getenv("Replicate_API")
 
 
 
-def DeepDanbooru(url):
+def DeepDanbooru(url, threshold):
+    
   file = requests.get(str(url))
   format = str(url).split(".")[-1]
   encoded_alpha = base64.b64encode(file.content).decode("utf-8")
@@ -15,7 +16,7 @@ def DeepDanbooru(url):
   encoded_final = f"data:image/{format};base64,{encoded_alpha}"
 
   data = {
-    'data': [encoded_final, 0.5]
+    'data': [encoded_final, threshold]
   }
   response = requests.post(
     "https://hysts-deepdanbooru.hf.space/api/predict",
@@ -37,30 +38,35 @@ def DeepDanbooru(url):
 class Ayaka:
   def __init__(
     self,
+    chara,
     language,
     text,
     noise=0.6,
     noise_w=0.668,
-    length=1
+    length=1,
+    is_symbol=False
   ):
+    self.chara = chara
     self.lang = language
     self.text = text
     self.noise = noise
     self.noise_w = noise_w
     self.length = length
-
+    self.is_symbol = is_symbol
+    
   def get_audio(self, path):
     url = "https://febryans-mikamika.hf.space/run/predict"
     headers = {'Authorization': f'Bearer {os.getenv("HF_API")}'}
 
     data = {
       'data': [
+        self.chara,
         self.text,
         self.lang,
         self.noise,
         self.noise_w,
         self.length,
-        False
+        self.is_symbol
       ]
     }
     res = requests.post(url, json=data, headers=headers).json()['data']

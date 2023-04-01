@@ -4,7 +4,7 @@ All Information Related to Violet
 
 from os import getenv
 
-owner = int(getenv('MY_ID'))
+owner = int(getenv('MY_ID_SEC'))
 bot_name = "ヴァイオレット"
 author_name = "FebryanS"
 bot_site = "https://Experimental-Bot-by-FebryanS.febryanshino.repl.co"

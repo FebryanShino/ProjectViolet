@@ -1,4 +1,5 @@
 from PIL import Image
+import requests
 
 def dominant_color(image_path):
   """
@@ -27,4 +28,13 @@ def dominant_color(image_path):
 
   colors = (int(avg_red), int(avg_green), int(avg_blue))
   return colors
+
+
+def rgb_from_url(url):
+  response = requests.post("https://febryans-image.hf.space/run/predict", json={
+	"data": [
+		url,
+	]
+}).json()
+  return [int(i) for i in response["data"]]
   

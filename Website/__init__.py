@@ -12,10 +12,12 @@ app = Flask(__name__)
 @app.route('/')
 def home():
 
-  return render_template("main_website.html",
-                         t_url=bot_info.twitter,
-                         g_url=bot_info.github,
-                         rep_url=bot_info.repository)
+  return render_template(
+    "main_website.html",
+    t_url=bot_info.twitter,
+    g_url=bot_info.github,
+    rep_url=bot_info.repository
+  )
 
 
 def run():

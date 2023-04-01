@@ -25,6 +25,7 @@ import time
 import qrcode
 import sqlite3
 import csv
+import json
 from PIL import Image
 from replit import db
 from pytube import YouTube
@@ -47,7 +48,8 @@ from Lyrics import parts, lyrics_list
 from Database import Database
 from DeepLearning import StableDiffusion, PastelMix, DeepDanbooru, Ayaka
 from OpenAI import OpenAI, OpenAIData, CropSquare
-
+from Playground import emojify_image
+from Image import rgb_from_url
 
 """
 Discord Client and Stuff
@@ -138,9 +140,7 @@ async def on_ready():
     greeting_random = random.choice(greetings)
 
     user = violet.get_user(bot_info.owner)
-    message = await user.send(greeting_random)
-    await asyncio.sleep(30)
-    await message.delete()
+    await user.send(greeting_random, delete_after=30)
     print(f'{bot_info.bot_name} has connected to Discord!')
   except Exception as e:
         print("An error ocurred: ", e)
@@ -246,7 +246,10 @@ async def statistics(ctx):
   from Violet.StatusData import StatusData
   type = StatusData()
   data = discord.Embed(title='Status Database', color = 0xe5dbca)
-  data.add_field(name='Status Counts',value= f"**Listening**: {type['music']}\n**Playing**: {type['game']}\n**Watching**: {type['movie']}")
+  data.add_field(
+    name='Status Counts',
+    value= f"**Listening**: {type['music']}\n**Playing**: {type['game']}\n**Watching**: {type['movie']}"
+  )
   data.set_thumbnail(url=bot_info.image_url)
   
   file = discord.File(
@@ -633,9 +636,11 @@ async def rate(ctx, *waifu: str):
 
 
 class RuRoulette(View):
-  def __init__(self, number):
+  def __init__(self, number, player):
     super().__init__()
 
+    self.max = player
+    self.player = 1
     self.number = number
     self.turn = None
 
@@ -646,52 +651,62 @@ class RuRoulette(View):
   )
   async def roll(self, button, interaction):
     number = random.randint(1, 6)
-    if interaction.user == self.turn:
-      await interaction.response.send_message(
-        "It's not your turn",
-        ephemeral = True
-      )
-      return
+    #if interaction.user != self.turn:
+      #await interaction.response.send_message(
+     #   "It's not your turn",
+    #    ephemeral = True
+     # )
+  #    return
 
     self.turn = interaction.user
 
     if number in self.number:
-      embed = self.death("You Died!")
+      embed = self.death(f"Player {self.player} is Dead!")
       self.clear_items()
       await interaction.response.edit_message(
         content = f"{interaction.user.mention}",
         embed = embed,
-        view = self
+        view = self,
+        delete_after = 60
       )
       self.stop()
       return
 
-    embed = self.death("You're Safe")
+    if self.player > self.max:
+      self.player = 1
+    else:
+      self.player +=1
+      
+    embed = self.death("You're Safe", self.player)
     await interaction.response.edit_message(
       embed = embed,
       view = self
     )
 
 
-  def death(self, title):
+  def death(self, title, player=None):
+    if player is not None:
+      player = f"Player {player} turn"
     embed = discord.Embed(
-      title = title
+      title = title,
+      description = player
     )
     return embed
 
 
 
 @playground.command(name='russian-roulette')
-async def ru_roulette(ctx):
+async def ru_roulette(ctx, player: int):
   number_set = set()
 
   while len(number_set) < 2:
     number = random.randint(1, 6)
     number_set.add(number)
 
-  view = RuRoulette(number_set)
+  view = RuRoulette(number_set, player)
   embed = discord.Embed(
-    title = "Start!"
+    title = "Start!",
+    description = "Player 1 turn"
   )
   await ctx.respond(
     embed = embed,
@@ -701,6 +716,9 @@ async def ru_roulette(ctx):
 
 
 class CoinFlipView(View):
+  """
+  WIP
+  """
   def __init__(self, result):
     super().__init__()
 
@@ -801,6 +819,17 @@ async def coin_flip(ctx):
     embed = embed,
     view = view
   )
+
+
+# WORK IN PROGRESS
+
+@playground.command(name='emojify')
+async def emojify(ctx, image: discord.Attachment):
+  await image.save(fp="Playground/image.png")
+
+  pil_image = Image.open("Playground/image.png")
+  result = emojify_image(pil_image, size=14)
+  await ctx.respond(result)
 
 
 """
@@ -1034,7 +1063,7 @@ async def lysave(ctx, file: discord.Attachment, title):
   format = str(file).split(".")[-1]
 
   name = title.title()
-  file_format = title.lower()
+  file_format = title.lower().replace(" ","_")
   if format == "txt":
     await file.save(fp=f"Lyrics/Title/{file_format}.txt")
     await ctx.respond(f"**{name}** is saved")
@@ -1241,7 +1270,13 @@ async def decimal(
 
 
 @convert.command(name='binary')
-async def binary(ctx, base: discord.Option(choices=['Octal','Decimal','Hexadecimal']), number: str):
+async def binary(
+  ctx,
+  base: discord.Option(
+  choices=['Octal','Decimal','Hexadecimal']
+  ),
+  number: str
+):
     base = base.lower()
     try:
         int(number, 2)
@@ -1993,35 +2028,31 @@ Otaku saves the world they say
 
 
 anime = violet.create_group(name='anime')
+mal = violet.create_group("myanimelist")
 
-@anime.command(name='myanimelist')
-async def mal(
-  ctx,
-  terms: discord.Option(
-    choices=['Anime','Character','User']),
-    title
+
+@mal.command(name='anime')
+async def mal_anime(
+  ctx: discord.ApplicationContext,
+  title
 ):
-  from MyAnimeList import ordinals, MyAnimeList
-  if terms is None:
-    await ctx.respond("Please enter the valid search category")
+
+  from MyAnimeList import MyAnimeList, titles, information
+  try:
+    mal = MyAnimeList.AnimeSearch(title)
+  except IndexError:
+    await ctx.response.send_message("Can't find the series")
     return
+  
+  anime_list = mal.anime_list()
+  
+  embeds = []
 
-  if not title:
-    await ctx.respond(f"Please enter the title, {ctx.author.mention}-san")
-    return
-    
-
-# AnimeSearch
-  if terms.lower() == 'anime':
-    try:
-      anime = MyAnimeList.AnimeSearch(title)
-      info = anime.info()
-    except IndexError:
-      await ctx.respond("Can't find the series")
-      return
-
-    title_og = anime.titles('og')
-    title_jp = anime.titles('jp')
+  
+  for series in anime_list:
+    info = information(series)
+    title_og = titles(series, 'og')
+    title_jp = titles(series, 'jp')
     type = info['type']
     season = info['season']
     color = info['color']
@@ -2040,22 +2071,41 @@ async def mal(
     theme = discord.Embed(
       title=title_og,
       url=url,
-      color = color,
-      description=f"**{type}**\n**Season**: {season}\n**Year**: {year}\n**Rank**: {ordinals(rank)}\n**Status**: {status}"
+      color = color
     )
 
-    theme.add_field(
-      name="",
-      value = f"**[{title_og} Trailer]({trailer})**"
-    )
     for i in synopsis:
       theme.add_field(name="", value=i)
+      
     theme.set_image(url=image)
-    theme.set_footer(text=title_jp)
-    await ctx.respond(embed=theme)
 
-# UserSearch
-  elif terms.lower() == 'user':
+    if trailer != "":
+      theme.set_author(
+        name = title_jp,
+        url = trailer,
+        icon_url = image
+      )
+    else:
+      theme.set_author(
+        name = title_jp,
+        icon_url = image
+      )
+    theme.set_footer(
+      text= f"{title_jp}\n{type}\nSeason: {season}\nYear: {year}\nRank: {ordinals(rank)}\nStatus: {status}")
+
+    embeds.append(theme)
+
+    paginator = pages.Paginator(
+      pages = embeds,
+      loop_pages = True
+    )
+    await paginator.respond(
+      ctx.interaction
+    )
+
+
+@mal.command(name="user")
+async def mal_user(self, name):
     try:
       user = MyAnimeList.UserSearch(title).info()
     except IndexError:
@@ -2071,8 +2121,9 @@ async def mal(
     embed.set_image(url=profile)
     await ctx.respond(embed=embed)
 
-# CharaSearch
-  elif terms.lower() == 'character':
+
+@mal.command(name="character")
+async def mal_chara(ctx, title):
     try:
       chara = MyAnimeList.CharaSearch(title).info()
     except IndexError:
@@ -2276,6 +2327,7 @@ class YandereView(View):
     self.res = res
     self.tags = tags
     self.counter = 1
+    self.warudo = 0
 
   """
   All The Buttons That Are Available
@@ -2288,7 +2340,17 @@ class YandereView(View):
     style = discord.ButtonStyle.primary,
     emoji = "<:liashock:754893144859869276>"
   )
-  async def roll(self, button, interaction): 
+  async def roll(self, button, interaction):
+
+    clock = ["🕛","🕐","🕑","🕒","🕓","🕔","🕕","🕖","🕗","🕘","🕙","🕚"]
+    
+    za_warudo = [i for i in self.children if i.custom_id == "warudo"][0]
+    if self.warudo < len(clock) - 1:
+      self.warudo += 1
+    else:
+      self.warudo = 0
+    za_warudo.emoji = clock[self.warudo]
+    
     save_button = [i for i in self.children if i.custom_id == 'Save'][0]
     save_button.label = "Embrace"
     save_button.disabled = False
@@ -2303,8 +2365,7 @@ class YandereView(View):
     embed = self.display(start, end)
     await interaction.response.edit_message(
       embed = embed,
-      view = self,
-      delete_after = self.timeout + 60
+      view = self
     )
 
   @discord.ui.button(
@@ -2326,19 +2387,21 @@ class YandereView(View):
     button.label = "Embraced"
     button.style = discord.ButtonStyle.primary
     button.emoji = "<:liasmile:754893063314210866>"
-    embed = self.memories_embed()
+    chara, embed = self.memories_embed()
     await interaction.response.edit_message(
       view = self
     )
-    await interaction.followup.send(
+    await owner.send(
+      f"Embracing {chara} into Memories",
       embed = embed,
-      ephemeral = True,
-      delete_after = 5
+      delete_after = 30
     )
     
   @discord.ui.button(
     label = "Za Warudo",
-    style = discord.ButtonStyle.red
+    style = discord.ButtonStyle.red,
+    emoji = "🕛",
+    custom_id = "warudo"
   )
   async def stop_interaction(
     self, button, interaction
@@ -2418,38 +2481,31 @@ class YandereView(View):
     info = self.res['posts'][0]
     chara = [k for k,v in self.res['tags'].items() if v == 'character']
 
-    try:
-      chara_format = tagf(chara)
-      Database("Memories/Violet's Memories", "Yandere").add_data(
-        info['file_url'],
-        chara_format
-      )
-      if len(chara_format) > 256:
-        characters = tagf(chara[:4])
-      else:
-        characters = chara_format
+    chara_format = tagf(chara)
+    Database("Memories/Violet's Memories", "Yandere").add_data(
+      info['file_url'],
+      chara_format
+    )
+    if len(chara_format) > 256:
+      characters = tagf(chara[:4])
+    else:
+      characters = chara_format
    
-      embed = discord.Embed(
-        title = characters,
-        color = bot_info.color,
-        url = info['file_url']
-      )
-      embed.set_author(
-        name = "Saved to Memories"
-      )
-      embed.set_thumbnail(
-        url = info['preview_url']
-      )
-      embed.set_footer(
-        text = f"Today at {timestamp()} UTC"
-      )
-      return embed
-    except sqlite3.IntegrityError:
-      chara_format = f"{tagf(chara)} is already in Violet's heart"
-      embed = discord.Embed(
-        title = chara_format
-      )
-      return embed
+    embed = discord.Embed(
+      title = characters,
+      color = bot_info.color,
+      url = info['file_url']
+    )
+    embed.set_author(
+      name = "Saved to Memories"
+    )
+    embed.set_thumbnail(
+      url = info['preview_url']
+    )
+    embed.set_footer(
+      text = f"Today at {timestamp()} UTC"
+    )
+    return characters, embed
 
   
   def display(self, start, end):
@@ -2458,7 +2514,21 @@ class YandereView(View):
     score = f"Score: {post['score']}"
     file = post['file_size']/1024/1024
     count = f"{ordinals(self.counter)} Roll"
+    red, green, blue = rgb_from_url(post['sample_url'])
+    color = discord.Color.from_rgb(red, green, blue)
 
+    try:
+      Database("Memories/Violet's Memories", "Yandere").get_data(post['file_url'])
+      status = "Embraced into memories"
+
+      save_button = [i for i in self.children if i.custom_id == 'Save'][0]
+      save_button.label = "Embrace"
+      save_button.disabled = True
+      save_button.emoji = "<:liaangry:754892955457814668>"
+      save_button.style = discord.ButtonStyle.primary
+    except TypeError:
+      status = "Yet to embrace"
+      
     chara = []
     series = []
     general = []
@@ -2480,8 +2550,8 @@ class YandereView(View):
 
     embed = discord.Embed(
       title = character,
-      description = score,
-      color = bot_info.color  
+      description = f"{score}\nStatus: {status}",
+      color = color 
     )
     embed.add_field(
       name="Series",
@@ -2565,13 +2635,48 @@ async def yd_random(
   await ctx.respond(
     embed = embed,
     ephemeral = hidden,
-    view = view,
-    delete_after = secs(timeout) + 60
+    view = view
   )
   
   
   
+@anime.command(name='yandere-save')
+async def yd_save(ctx):
+  
+  timeline = ["1d", "1w", "1m", "1y"]
+  
+  with open("AnimeSeries/popular.csv","a", newline="") as f:
+    writer = csv.writer(f)
+    
+    for period in timeline:
+      res = Yandere(True, period).get_raw()
+      for i in res['data']:
+        writer.writerow([period, i['id'], i['sample_url'], i['file_url']])
 
+  with open("AnimeSeries/popular.csv", "r") as post_database:
+    reader = csv.reader(post_database)
+    next(reader)
+
+    post_ids = []
+    filtered = []
+    for i in reader:
+      post_id = i[1]
+      if post_id not in post_ids:
+        filtered.append(i)
+
+  with open("AnimeSeries/popular.csv", "w") as updated_data:
+    writer = csv.writer(updated_data)
+
+    writer.writerow(
+      ["TIMELINE","ID","SAMPLE","FILE"]
+    )
+    for i in filtered:
+      writer.writerow(i)
+      
+      
+  await ctx.respond("done")
+        
+    
 
 
 
@@ -2717,6 +2822,9 @@ A.K.A Too lazy to open Photoshop
 - square : crop an image into a square
 """
 
+image = violet.create_group("image")
+
+
 @violet.command()
 async def color(ctx):
   from Image import dominant_color
@@ -2759,6 +2867,25 @@ async def square(ctx):
 
 
 
+@image.command(name="color")
+async def image_color(
+  ctx,
+  url
+):
+
+  start = time.perf_counter()
+  red, green, blue = rgb_from_url(url)
+  embed = discord.Embed(
+    title = "Yeah boi",
+    color = discord.Color.from_rgb(red,green,blue)
+  )
+  embed.set_image(url=url)
+  end = time.perf_counter()
+
+  print(end-start)
+
+  await ctx.respond(embed=embed)
+  
 
 """
 OpenAI Series
@@ -2959,9 +3086,9 @@ async def embrace(ctx, url, name):
   characters = name.title()
 
   if "yande.re" in url:
-    table = 'yandere'
+    table = 'Yandere'
   elif 'danbooru' in url or 'donmai.us' in url:
-    table = 'danbooru'
+    table = 'Danbooru'
   else:
     await ctx.respond("Violet can't remember that")
     return
@@ -3237,27 +3364,40 @@ dl = violet.create_group(name="deeplearning")
 async def deepbooru(
   ctx,
   image: discord.Attachment,
+  threshold: float=0.5,
   hidden:bool=False
 ):
   if ctx.author != violet.get_user(bot_info.owner):
     hidden = False
 
-  await ctx.respond("Violet is trying to think about stuff right now\nPlease wait a moment...", ephemeral=True)
+  await ctx.respond(
+    "Violet is trying to think about stuff right now\nPlease wait a moment...",
+    ephemeral=True,
+    delete_after=15
+  )
+
+  if threshold > 0.9:
+    threshold = 0.9
+  elif threshold < 0:
+    threshold = 0
 
   start = time.perf_counter()
-  tags = DeepDanbooru(image)
+  tags = DeepDanbooru(image, threshold)
   top_tag = next(iter(tags))
   _,*rest = tags.items()
+  r, g, b = rgb_from_url(str(image))
+  color = discord.Color.from_rgb(r, g, b)
   end = time.perf_counter()
 
   def percentage(number):
     result = "{0:.0%}".format(number)
     return result
-    
+
   display = discord.Embed(
     title=f"「{top_tag}」",
     description=f"{percentage(tags[top_tag])} Accuracy",
-    url=f"https://danbooru.donmai.us/posts?tags={top_tag.replace(' ','_').lower()}"
+    url=f"https://danbooru.donmai.us/posts?tags={top_tag.replace(' ','_').lower()}",
+    color = color
   )
 
   for tag, accuracy in dict(rest).items():
@@ -3268,7 +3408,7 @@ async def deepbooru(
     
   display.set_image(url=image)
   display.set_footer(
-    text=f"Time elapsed: {str(end-start)[:4]} seconds"
+    text=f"Score Threshold: {threshold}\nTime elapsed: {str(end-start)[:4]} seconds"
   )
   display.set_thumbnail(url=bot_info.image_url)
   display.set_author(
@@ -3279,27 +3419,47 @@ async def deepbooru(
   await ctx.respond(embed=display, ephemeral=hidden)
 
 
+def character_list():
+  with open("DeepLearning/characters.json", "r") as f:
+    data = json.load(f)
+    characters = []
+    for character, info in data.items():
+      characters.append(character)
+
+    return characters
+
 
 @dl.command(
-  name='ayaka',
-  description="Ayaka will say something as you wish"
+  name='chara-voice',
+  description="Your waifu will say something as you wish"
 )
+
 @discord.option(
   "text",
   description="Japanese only (Hiragana, Katakana, Kanji)"
 )
 async def ayaya(
   ctx,
+  character: discord.Option(
+    choices = character_list()
+  ),
   text,
-  language: discord.Option(
-    choices=['Japanese','Chinese']
-  )='Japanese',
+  length: float=1,
   noise: float=0.6,
   noise_width: float=0.668,
-  length: float=1
+  romaji: bool=False
 ):
+
+  with open("DeepLearning/characters.json", "r") as f:
+    data = json.load(f)[character]
+    title = data['title']
+    profile = data['profile']
+    thumb = data['thumb']
+    image = data['img']
+
+
   await ctx.respond(
-    "少々お待ちください\n- Kamisato Ayaka",
+    f"少々お待ちください\n- {character}",
     ephemeral = True,
     delete_after = 30
   )
@@ -3312,43 +3472,50 @@ async def ayaya(
     return number
 
   start = time.perf_counter()
-  ayaka = Ayaka(
-    language = language,
+  Ayaka(
+    chara = title,
+    language = "Japanese",
     text = text,
     noise = max_value(noise, 1),
     noise_w = max_value(noise_width, 1),
-    length = max_value(length, 2)
-  ).get_audio("Ayaka")
+    length = max_value(length, 2),
+    is_symbol = romaji
+  ).get_audio(title)
   end = time.perf_counter()
 
-  if ayaka == 'Success':
-    with open("Ayaka.wav",'rb') as f:
-      embed = discord.Embed(
-        description = text,
-        color = 0xe4b2d4
-      )
-      embed.set_author(
-        name = "Kamisato Ayaka",
-        icon_url = os.getenv('ayaka_beach')
-      )
-      embed.set_thumbnail(
-        url = os.getenv('ayaka_portrait')
-      )
-      embed.set_image(
-        url = os.getenv('ayaka_landscape')
-      )
-      embed.set_footer(
-        text=f"Character length: {len(text)}\nTime elapsed: {end-start:.3f} seconds")
+  time_taken = round(end - start, 3)
+  
+  with open(f"{title}.wav",'rb') as f:
+    embed = discord.Embed(
+      description = text,
+      color = 0xe4b2d4
+    )
+    embed.set_author(
+      name = character,
+      icon_url = profile
+    )
+    embed.set_thumbnail(
+      url = thumb
+    )
+    embed.set_image(
+      url = image
+    )
+    embed.set_footer(
+      text=f"Character length: {len(text)}\nTime elapsed: {time_taken} seconds")
 
-      await ctx.respond(
-        embed = embed,
-        file = discord.File(f),
-        delete_after = 300
+    await ctx.respond(
+      embed = embed,
+      file = discord.File(f),
+      delete_after = 300
       )
-    os.remove("Ayaka.wav")
+
+  with open("DeepLearning/statistics.csv", "a", newline="") as stats:
+    writer = csv.writer(stats)
+    writer.writerow(
+      [romaji, len(text), time_taken]
+    )
+  os.remove(f"{title}.wav")
     
-  else:
-    await ctx.respond(ayaka, ephemeral=True)
   
   
 
@@ -3443,4 +3610,4 @@ Everything that keeps Violet alive
 """
 
 Heart()
-violet.run(os.getenv("Violet's Precious Thing"))
+violet.run(os.getenv("VIOLET_ALT"))

@@ -1,0 +1,21 @@
+{
+  "Misono Mika": {
+    "title": "mika",
+    "profile": "https://pbs.twimg.com/media/FsneCSMaYAE1bPT?format=png&name=360x360",
+    "thumb": "https://pbs.twimg.com/media/FsneCSNaMAAmoV2?format=jpg&name=medium",
+    "img": "https://pbs.twimg.com/media/FsneCSQacAAqmbI?format=jpg&name=medium"
+  },
+  "Kamisato Ayaka": {
+    "title": "ayaka",
+    "profile": "https://pbs.twimg.com/media/Fq5gLVsacAAlJKP?format=jpg&name=medium",
+    "thumb": "https://pbs.twimg.com/media/Fq5gLUGaQAAsUfs?format=png&name=900x900",
+    "img": "https://pbs.twimg.com/media/Fq5fzo3aQAI_btM?format=jpg&name=large"
+  },
+
+  "Nishikigi Chisato": {
+    "title": "chisato",
+    "profile": "https://pbs.twimg.com/media/FsqIhk9aYAA-pwv?format=jpg&name=large",
+    "thumb": "https://pbs.twimg.com/media/FsqIhk7aMAAmjlG?format=jpg&name=large",
+    "img": "https://pbs.twimg.com/media/FsqIhk0aEAErvjC?format=jpg&name=large"
+  }
+}
