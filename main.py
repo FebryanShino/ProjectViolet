@@ -42,7 +42,7 @@ from Memories import top
 from Website import Heart
 from YouTube import ytAPI
 from Discord import FileNames, timestamp
-from MyAnimeList import ordinals
+from MyAnimeList import MyAnimeList, ordinals
 from AnimeSeries import Kyoko, WaifuIm, Yandere, Danbooru
 from Lyrics import parts, lyrics_list
 from Database import Database
@@ -2037,7 +2037,7 @@ async def mal_anime(
   title
 ):
 
-  from MyAnimeList import MyAnimeList, titles, information
+  from MyAnimeList import titles, information
   try:
     mal = MyAnimeList.AnimeSearch(title)
   except IndexError:
@@ -2124,13 +2124,21 @@ async def mal_user(self, name):
 
 
 @mal.command(name="character")
-async def mal_chara(ctx, title):
-    try:
-      chara = MyAnimeList.CharaSearch(title).info()
-    except IndexError:
-      await ctx.respond("User not found")
-      return
+async def mal_chara(
+  ctx: discord.ApplicationContext,
+  name
+):
+  try:
+    object = MyAnimeList.CharaSearch(name)
+    all = object.chara_list()
+  except IndexError:
+    await ctx.respond("Character is not found")
+    return
 
+  embeds = []
+
+  for i in all:
+    chara = object.info(i)
     chara_name = chara['name']
     kanji = chara['kanji']
     nick = "\n".join(chara['nickname'])
@@ -2138,10 +2146,34 @@ async def mal_chara(ctx, title):
     bio = chara['bio']
     image = chara['image']
 
-    embed = discord.Embed(title=chara_name, url=url, description=f"{kanji}\n\n{nick}")
-    embed.add_field(name="About", value=bio)
+    embed = discord.Embed(
+      title = chara_name,
+      url = url,
+      description = nick
+    )
+    embed.set_author(
+      name = kanji,
+      icon_url = image
+    )
+    embed.add_field(
+      name = "About",
+      value = ""
+    )
+    if bio is not None:
+      for i in bio:
+        embed.add_field(
+          name = "",
+          value = i
+        )
     embed.set_image(url=image)
-    await ctx.respond(embed=embed)
+
+    embeds.append(embed)
+
+  paginator = pages.Paginator(
+    pages = embeds,
+    loop_pages = True
+  )
+  await paginator.respond(ctx.interaction)
 
 
 
@@ -2664,6 +2696,7 @@ async def yd_save(ctx):
       post_id = i[1]
       if post_id not in post_ids:
         filtered.append(i)
+        post_ids.append(post_id)
 
   with open("AnimeSeries/popular.csv", "w") as updated_data:
     writer = csv.writer(updated_data)

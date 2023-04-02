@@ -53,17 +53,25 @@ class MyAnimeList:
 
     def __init__(self, name):
       self.name = name
+      
+
+    def chara_list(self):
       params = {'q': self.name}
       chara = requests.get("https://api.jikan.moe/v4/characters", params=params)
-      self.res = chara.json()['data'][0]
+      data = chara.json()['data']
 
-    def info(self):
-      name = self.res['name']
-      kanji= self.res['name_kanji']
-      nickname = self.res['nicknames']
-      url = self.res['url']
-      about = self.res['about']
-      image = self.res['images']['jpg']['image_url']
+      return data
+
+
+    def info(self, character):
+      name = character['name']
+      kanji= character['name_kanji']
+      nickname = character['nicknames']
+      url = character['url']
+      about = character['about']
+      if about is not None:
+        about = about.split("\n\n")
+      image = character['images']['jpg']['image_url']
 
       return {'name': name,
               'kanji': kanji,
