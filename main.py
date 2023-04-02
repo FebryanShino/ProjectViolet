@@ -2055,10 +2055,10 @@ async def mal_anime(
     title_jp = titles(series, 'jp')
     type = info['type']
     season = info['season']
+    synopsis = info['synopsis']
     color = info['color']
     year = info['year']
     rank = info['rank']
-    synopsis = info['synopsis']
     url = info['url']
     image = info['art']
     trailer = info['trailer']
@@ -2069,21 +2069,22 @@ async def mal_anime(
       pass
 
     theme = discord.Embed(
-      title=title_og,
-      url=url,
-      color = color
+        title=title_og,
+        url=url,
+        color = color
     )
 
-    for i in synopsis:
-      theme.add_field(name="", value=i)
+    if synopsis is not None:
+      for i in synopsis:
+        theme.add_field(name="", value=i)
       
     theme.set_image(url=image)
 
-    if trailer != "":
+    if trailer['url'] is not None:
       theme.set_author(
         name = title_jp,
-        url = trailer,
-        icon_url = image
+        url = trailer['url'],
+        icon_url = trailer['images']['maximum_image_url']
       )
     else:
       theme.set_author(

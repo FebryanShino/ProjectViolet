@@ -93,8 +93,10 @@ def information(anime):
   year = anime['year']
   rank = anime['rank']
   status = anime['status']
-  trailer = anime['trailer']['url']
-  synopsis = anime['synopsis'].split("\n\n")[:-1]
+  trailer = anime['trailer']
+  synopsis = anime['synopsis']
+  if synopsis is not None:
+    synopsis = synopsis.replace("\n \n", "\n\n").split("\n\n")[:-1]
   url = anime['url']
   image = anime['images']['jpg']['large_image_url']
 
