@@ -1,7 +1,8 @@
-EMOJI, TOKEN LENGTH, TIME TAKEN(s)
-False,10,2.637
-False,247,22.499
-False,13,3.602
-False,1,2.232
-False,4,1.79
-False,247,26.875
+CHARACTER, LANGUAGE, EMOJI, TOKEN LENGTH, NOISE, NOISE WIDTH, SPEECH LENGTH, TIME TAKEN(s)
+Kamisato Ayaka,Japanese,False,12,0.6,0.668,1,9.567
+Kamisato Ayaka,Japanese,False,4,0.6,0.668,1,3.394
+Nishikigi Chisato,Japanese,False,4,0.6,0.668,1,3.171
+Nishikigi Chisato,Chinese,False,4,0.6,0.668,1,2.859
+Kamisato Ayaka,Japanese,False,5,0.6,0.668,1,2.809
+Misono Mika,Japanese,False,9,0.6,0.668,2,4.085
+Misono Mika,Japanese,False,57,0.6,0.668,1.5,13.921

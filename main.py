@@ -3478,15 +3478,19 @@ async def ayaya(
     choices = character_list()
   ),
   text,
+  romaji: bool=False,
+  language: discord.Option(
+    choices = ["Japanese", "Chinese"]
+  )="Japanese",
   length: float=1,
   noise: float=0.6,
   noise_width: float=0.668,
-  romaji: bool=False
 ):
 
   with open("DeepLearning/characters.json", "r") as f:
     data = json.load(f)[character]
     title = data['title']
+    series = data['series']
     profile = data['profile']
     thumb = data['thumb']
     image = data['img']
@@ -3504,15 +3508,19 @@ async def ayaya(
     elif number < 0.1:
       number = 0.1
     return number
+    
+  noise = max_value(noise, 1)
+  noise_width = max_value(noise_width, 1)
+  length = max_value(length, 2)
 
   start = time.perf_counter()
   Ayaka(
     chara = title,
-    language = "Japanese",
+    language = language,
     text = text,
-    noise = max_value(noise, 1),
-    noise_w = max_value(noise_width, 1),
-    length = max_value(length, 2),
+    noise = noise,
+    noise_w = noise_width,
+    length = length,
     is_symbol = romaji
   ).get_audio(title)
   end = time.perf_counter()
@@ -3521,8 +3529,12 @@ async def ayaya(
   
   with open(f"{title}.wav",'rb') as f:
     embed = discord.Embed(
-      description = text,
+      description = f"From {series}",
       color = 0xe4b2d4
+    )
+    embed.add_field(
+      name = f"Text[{len(text)}]",
+      value = text
     )
     embed.set_author(
       name = character,
@@ -3535,7 +3547,7 @@ async def ayaya(
       url = image
     )
     embed.set_footer(
-      text=f"Character length: {len(text)}\nTime elapsed: {time_taken} seconds")
+      text=f"Language: {language}\nSpeech Length: {length}\nNoise: {noise}  |  Noise Width: {noise_width}\nTime Elapsed: {time_taken} seconds")
 
     await ctx.respond(
       embed = embed,
@@ -3546,7 +3558,7 @@ async def ayaya(
   with open("DeepLearning/statistics.csv", "a", newline="") as stats:
     writer = csv.writer(stats)
     writer.writerow(
-      [romaji, len(text), time_taken]
+      [character, language, romaji, len(text), noise, noise_width, length, time_taken]
     )
   os.remove(f"{title}.wav")
     

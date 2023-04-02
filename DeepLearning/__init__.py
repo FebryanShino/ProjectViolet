@@ -69,7 +69,11 @@ class Ayaka:
         self.is_symbol
       ]
     }
-    res = requests.post(url, json=data, headers=headers).json()['data']
+    res = requests.post(
+      url,
+      json = data,
+      headers = headers
+    ).json()['data']
 
     if res[0] == 'Success':
       b64_str = res[1].split(',')[1]
